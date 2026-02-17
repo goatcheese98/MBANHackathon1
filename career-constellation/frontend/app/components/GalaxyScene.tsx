@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Line } from '@react-three/drei';
@@ -88,16 +86,16 @@ function JobNode({
       {isSelected && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[1.5, 1.7, 32]} />
-          <meshBasicMaterial color="#1e40af" transparent opacity={0.9} />
+          <meshBasicMaterial color="#3b82f6" transparent opacity={0.9} />
         </mesh>
       )}
       
       {/* Label on hover */}
       {isHovered && (
         <Html distanceFactor={15}>
-          <div className="bg-white border border-gray-200 shadow-lg px-3 py-2 rounded-lg text-gray-900 text-xs whitespace-nowrap pointer-events-none">
+          <div className="bg-base-100 border border-base-300 shadow-lg px-3 py-2 rounded-lg text-base-content text-xs whitespace-nowrap pointer-events-none">
             <div className="font-semibold">{job.title}</div>
-            <div className="text-gray-500 text-[10px]">Family {job.cluster_id}</div>
+            <div className="text-base-content/60 text-[10px]">Family {job.cluster_id}</div>
           </div>
         </Html>
       )}
@@ -174,15 +172,15 @@ function ClusterLabel({ cluster }: { cluster: ClusterInfo }) {
     <group position={[cluster.centroid.x, cluster.centroid.y + 6, cluster.centroid.z]}>
       <Html distanceFactor={12}>
         <div 
-          className="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm border"
+          className="badge badge-lg gap-1 border"
           style={{ 
-            backgroundColor: 'white',
+            backgroundColor: 'hsl(var(--b1))',
             color: cluster.color,
             borderColor: `${cluster.color}40`
           }}
         >
           {cluster.label}
-          <span className="ml-1 text-gray-400 font-normal">({cluster.size})</span>
+          <span className="text-base-content/40">({cluster.size})</span>
         </div>
       </Html>
     </group>
@@ -293,7 +291,7 @@ function SceneContent({
 // Main Galaxy Scene component
 export default function GalaxyScene(props: GalaxySceneProps) {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="fixed inset-0 bg-gradient-to-br from-base-200 to-base-300">
       <Canvas
         camera={{ position: [0, 0, 90], fov: 50 }}
         dpr={[1, 2]}
@@ -303,27 +301,27 @@ export default function GalaxyScene(props: GalaxySceneProps) {
       </Canvas>
       
       {/* Instructions overlay */}
-      <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur border border-gray-200 rounded-xl p-4 shadow-lg">
-        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Navigation</h4>
-        <div className="space-y-1.5 text-xs text-gray-600">
+      <div className="absolute bottom-6 left-6 bg-base-100/90 backdrop-blur border border-base-300 rounded-lg p-4 shadow-lg">
+        <h4 className="text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-2">Navigation</h4>
+        <div className="space-y-1.5 text-xs text-base-content/70">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            <span className="w-2 h-2 rounded-full bg-primary" />
             <span>Click dot to select position</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-gray-400" />
+            <span className="w-2 h-2 rounded-full bg-base-content/40" />
             <span>Drag to rotate view</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-gray-400" />
+            <span className="w-2 h-2 rounded-full bg-base-content/40" />
             <span>Scroll to zoom</span>
           </div>
         </div>
       </div>
       
       {/* Legend */}
-      <div className="absolute top-20 right-6 bg-white/90 backdrop-blur border border-gray-200 rounded-xl p-4 shadow-lg max-w-xs">
-        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Job Families</h4>
+      <div className="absolute top-20 right-6 bg-base-100/90 backdrop-blur border border-base-300 rounded-lg p-4 shadow-lg max-w-xs">
+        <h4 className="text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-3">Job Families</h4>
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {props.clusters
             .sort((a, b) => b.size - a.size)
@@ -333,8 +331,8 @@ export default function GalaxyScene(props: GalaxySceneProps) {
                 onClick={() => props.onClusterSelect(c.id === props.selectedCluster ? null : c.id)}
                 className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
                   props.selectedCluster === c.id 
-                    ? 'bg-blue-50 ring-1 ring-blue-200' 
-                    : 'hover:bg-gray-50'
+                    ? 'bg-primary/10 ring-1 ring-primary' 
+                    : 'hover:bg-base-200'
                 }`}
               >
                 <div 
@@ -342,9 +340,9 @@ export default function GalaxyScene(props: GalaxySceneProps) {
                   style={{ backgroundColor: c.color }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-gray-900 truncate">{c.label}</div>
+                  <div className="text-xs font-medium text-base-content truncate">{c.label}</div>
                 </div>
-                <span className="text-xs text-gray-400">{c.size}</span>
+                <span className="text-xs text-base-content/40">{c.size}</span>
               </button>
             ))}
         </div>

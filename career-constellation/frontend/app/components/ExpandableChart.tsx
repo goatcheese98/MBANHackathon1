@@ -1,9 +1,6 @@
-'use client';
-
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Maximize2, X, Minimize2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Maximize2, X } from 'lucide-react';
 
 interface ExpandableChartProps {
   children: React.ReactNode;
@@ -25,19 +22,16 @@ export default function ExpandableChart({
   return (
     <>
       {/* Normal View */}
-      <div className={cn(
-        'bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md',
-        className
-      )}>
+      <div className={`card bg-base-100 border border-base-300 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md ${className || ''}`}>
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-base-300 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-            {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+            <h3 className="text-sm font-semibold text-base-content">{title}</h3>
+            {subtitle && <p className="text-xs text-base-content/60 mt-0.5">{subtitle}</p>}
           </div>
           <button
             onClick={() => setIsExpanded(true)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+            className="btn btn-ghost btn-sm btn-square"
             title="Expand view"
           >
             <Maximize2 className="w-4 h-4" />
@@ -65,18 +59,18 @@ export default function ExpandableChart({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+              className="card bg-base-100 border border-base-300 shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+              <div className="px-6 py-4 border-b border-base-300 flex items-center justify-between bg-base-200">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-                  {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+                  <h3 className="text-lg font-semibold text-base-content">{title}</h3>
+                  {subtitle && <p className="text-sm text-base-content/60 mt-0.5">{subtitle}</p>}
                 </div>
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
+                  className="btn btn-ghost btn-sm btn-square"
                 >
                   <X className="w-5 h-5" />
                 </button>

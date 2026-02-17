@@ -1,9 +1,10 @@
+import daisyui from 'daisyui';
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './index.html',
+    './app/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
@@ -22,22 +23,42 @@ module.exports = {
           cyan: '#48DBFB',
         }
       },
-      animation: {
-        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'float': 'float 6s ease-in-out infinite',
-        'glow': 'glow 2s ease-in-out infinite alternate',
-      },
-      keyframes: {
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
-        glow: {
-          '0%': { boxShadow: '0 0 5px rgba(78, 205, 196, 0.5)' },
-          '100%': { boxShadow: '0 0 20px rgba(78, 205, 196, 0.8), 0 0 40px rgba(78, 205, 196, 0.4)' },
-        },
-      },
     },
   },
-  plugins: [],
+  plugins: [daisyui],
+  daisyui: {
+    themes: [
+      {
+        light: {
+          'primary': '#1e293b',
+          'primary-content': '#ffffff',
+          'secondary': '#64748b',
+          'secondary-content': '#ffffff',
+          'accent': '#3b82f6',
+          'accent-content': '#ffffff',
+          'neutral': '#374151',
+          'neutral-content': '#ffffff',
+          'base-100': '#f9fafb',
+          'base-200': '#f3f4f6',
+          'base-300': '#e5e7eb',
+          'base-content': '#1f2937',
+          'info': '#3b82f6',
+          'info-content': '#ffffff',
+          'success': '#22c55e',
+          'success-content': '#ffffff',
+          'warning': '#f59e0b',
+          'warning-content': '#ffffff',
+          'error': '#ef4444',
+          'error-content': '#ffffff',
+        },
+      },
+      'dark',
+      'cupcake',
+      'synthwave',
+    ],
+    darkTheme: 'dark',
+    base: true,
+    styled: true,
+    utils: true,
+  },
 };

@@ -1,10 +1,7 @@
-'use client';
-
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { motion } from 'framer-motion';
 
 interface SkillData {
   skill: string;
@@ -66,10 +63,10 @@ function SkillBar({
         distanceFactor={8}
       >
         <div className="text-center pointer-events-none">
-          <div className="text-[10px] font-medium text-white whitespace-nowrap">
+          <div className="text-[10px] font-medium text-base-content whitespace-nowrap">
             {skill}
           </div>
-          <div className="text-[8px] text-white/60">{count}</div>
+          <div className="text-[8px] text-base-content/60">{count}</div>
         </div>
       </Html>
       
@@ -129,7 +126,7 @@ export default function SkillsRadialChart({ skills, maxCount, title }: SkillsRad
   return (
     <div className="w-full h-64 relative">
       {title && (
-        <h4 className="absolute top-0 left-0 right-0 text-center text-sm font-semibold text-white/80 z-10">
+        <h4 className="absolute top-0 left-0 right-0 text-center text-sm font-semibold text-base-content/80 z-10">
           {title}
         </h4>
       )}

@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -12,7 +10,7 @@ import {
   Activity
 } from 'lucide-react';
 import { fetchStats } from '@/lib/api';
-import { cn, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 
 interface StatsData {
   total_jobs: number;
@@ -34,9 +32,9 @@ export default function StatsDashboard() {
 
   if (loading) {
     return (
-      <div className="glass rounded-2xl p-8">
+      <div className="card bg-base-100 border border-base-300 rounded-2xl p-8">
         <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cosmic-blue" />
+          <span className="loading loading-spinner loading-md text-primary"></span>
         </div>
       </div>
     );
@@ -49,41 +47,41 @@ export default function StatsDashboard() {
       icon: Users,
       label: 'Total Jobs',
       value: stats.total_jobs,
-      color: 'text-cosmic-cyan',
-      bgColor: 'bg-cosmic-cyan/10',
+      color: 'text-info',
+      bgColor: 'bg-info/10',
     },
     {
       icon: Layers,
       label: 'Job Families',
       value: stats.num_clusters,
-      color: 'text-cosmic-pink',
-      bgColor: 'bg-cosmic-pink/10',
+      color: 'text-secondary',
+      bgColor: 'bg-secondary/10',
     },
     {
       icon: BarChart3,
       label: 'Avg per Cluster',
       value: stats.avg_jobs_per_cluster.toFixed(1),
-      color: 'text-cosmic-yellow',
-      bgColor: 'bg-cosmic-yellow/10',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
     },
     {
       icon: Zap,
       label: 'Unique Keywords',
       value: Object.keys(stats.top_keywords_overall).length,
-      color: 'text-cosmic-purple',
-      bgColor: 'bg-cosmic-purple/10',
+      color: 'text-accent',
+      bgColor: 'bg-accent/10',
     },
   ];
 
   return (
-    <div className="glass rounded-2xl p-6 space-y-6">
+    <div className="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <Activity className="w-5 h-5 text-cosmic-blue" />
+        <h3 className="text-lg font-bold text-base-content flex items-center gap-2">
+          <Activity className="w-5 h-5 text-primary" />
           Constellation Analytics
         </h3>
-        <span className="text-xs text-white/40">Real-time</span>
+        <span className="badge badge-sm">Real-time</span>
       </div>
 
       {/* Stats Grid */}
@@ -94,21 +92,21 @@ export default function StatsDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass-dark rounded-xl p-4"
+            className="card bg-base-200 rounded-xl p-4"
           >
-            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center mb-3', card.bgColor)}>
-              <card.icon className={cn('w-5 h-5', card.color)} />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${card.bgColor}`}>
+              <card.icon className={`w-5 h-5 ${card.color}`} />
             </div>
-            <div className="text-2xl font-bold text-white">{formatNumber(Number(card.value))}</div>
-            <div className="text-xs text-white/50">{card.label}</div>
+            <div className="text-2xl font-bold text-base-content">{formatNumber(Number(card.value))}</div>
+            <div className="text-xs text-base-content/50">{card.label}</div>
           </motion.div>
         ))}
       </div>
 
       {/* Top Keywords */}
       <div>
-        <h4 className="text-sm font-semibold text-white/70 mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-cosmic-green" />
+        <h4 className="text-sm font-semibold text-base-content/70 mb-3 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-success" />
           Top Keywords Across All Jobs
         </h4>
         <div className="space-y-2">
@@ -120,16 +118,16 @@ export default function StatsDashboard() {
               
               return (
                 <div key={keyword} className="flex items-center gap-3">
-                  <span className="text-xs text-white/60 w-24 truncate">{keyword}</span>
-                  <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <span className="text-xs text-base-content/60 w-24 truncate">{keyword}</span>
+                  <div className="flex-1 h-2 bg-base-300 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
                       transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
-                      className="h-full rounded-full bg-gradient-to-r from-cosmic-blue to-cosmic-cyan"
+                      className="h-full rounded-full bg-primary"
                     />
                   </div>
-                  <span className="text-xs text-white/40 w-8 text-right">{count}</span>
+                  <span className="text-xs text-base-content/40 w-8 text-right">{count}</span>
                 </div>
               );
             })}
@@ -138,8 +136,8 @@ export default function StatsDashboard() {
 
       {/* Cluster Distribution */}
       <div>
-        <h4 className="text-sm font-semibold text-white/70 mb-3 flex items-center gap-2">
-          <PieChart className="w-4 h-4 text-cosmic-pink" />
+        <h4 className="text-sm font-semibold text-base-content/70 mb-3 flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-secondary" />
           Cluster Size Distribution
         </h4>
         <div className="flex flex-wrap gap-2">
@@ -149,10 +147,10 @@ export default function StatsDashboard() {
             .map(([clusterId, size]) => (
               <div
                 key={clusterId}
-                className="glass px-3 py-1.5 rounded-lg flex items-center gap-2"
+                className="badge badge-lg gap-2 p-2"
               >
-                <span className="text-xs font-medium text-white/80">Cluster {clusterId}</span>
-                <span className="text-xs text-white/40">{size}</span>
+                <span className="text-xs font-medium text-base-content/80">Cluster {clusterId}</span>
+                <span className="text-xs text-base-content/40">{size}</span>
               </div>
             ))}
         </div>
