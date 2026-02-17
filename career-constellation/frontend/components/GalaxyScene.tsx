@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Html, Line, Text } from '@react-three/drei';
+import { OrbitControls, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { JobPoint, ClusterInfo } from '@/types';
 
@@ -17,8 +17,8 @@ interface GalaxySceneProps {
   onClusterSelect: (clusterId: number | null) => void;
 }
 
-// Individual Job Node (Star)
-function JobStar({
+// Individual Job Node - Small dots
+function JobNode({
   job,
   isSelected,
   isHovered,
@@ -34,43 +34,30 @@ function JobStar({
   onHover: (hovered: boolean) => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
   
-  const baseScale = job.size * 0.12;
+  // Much smaller fixed size
+  const baseScale = 0.4;
   
   useFrame((state) => {
     if (!meshRef.current) return;
     
     const time = state.clock.getElapsedTime();
-    const pulseScale = isSelected || isHovered 
-      ? 1 + Math.sin(time * 3) * 0.2 
-      : 1;
+    const pulseScale = isSelected 
+      ? 1.5 + Math.sin(time * 4) * 0.3
+      : isHovered 
+        ? 1.3 
+        : 1;
     
     meshRef.current.scale.setScalar(baseScale * pulseScale);
-    
-    if (glowRef.current) {
-      const glowScale = isSelected ? 2.5 : isHovered ? 2 : 1.5;
-      glowRef.current.scale.setScalar(baseScale * glowScale * (1 + Math.sin(time * 2) * 0.1));
-    }
   });
   
-  const opacity = isInSelectedCluster ? 1 : 0.15;
+  const opacity = isInSelectedCluster ? 1 : 0.1;
   
   if (!isInSelectedCluster && !isSelected) return null;
   
   return (
     <group position={[job.x, job.y, job.z]}>
-      {/* Glow effect */}
-      <mesh ref={glowRef}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial
-          color={job.color}
-          transparent
-          opacity={isSelected ? 0.3 : isHovered ? 0.2 : 0.1}
-        />
-      </mesh>
-      
-      {/* Main star */}
+      {/* Main dot */}
       <mesh
         ref={meshRef}
         onClick={(e) => {
@@ -87,11 +74,11 @@ function JobStar({
           document.body.style.cursor = 'auto';
         }}
       >
-        <sphereGeometry args={[1, 16, 16]} />
+        <sphereGeometry args={[1, 8, 8]} />
         <meshStandardMaterial
           color={job.color}
           emissive={job.color}
-          emissiveIntensity={isSelected ? 1 : isHovered ? 0.8 : 0.4}
+          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.2}
           transparent
           opacity={opacity}
         />
@@ -100,17 +87,17 @@ function JobStar({
       {/* Selection ring */}
       {isSelected && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[baseScale * 2.5, baseScale * 2.7, 32]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
+          <ringGeometry args={[1.5, 1.7, 32]} />
+          <meshBasicMaterial color="#1e40af" transparent opacity={0.9} />
         </mesh>
       )}
       
       {/* Label on hover */}
       {isHovered && (
-        <Html distanceFactor={10}>
-          <div className="bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-white text-xs whitespace-nowrap pointer-events-none shadow-xl">
+        <Html distanceFactor={15}>
+          <div className="bg-white border border-gray-200 shadow-lg px-3 py-2 rounded-lg text-gray-900 text-xs whitespace-nowrap pointer-events-none">
             <div className="font-semibold">{job.title}</div>
-            <div className="text-gray-400 text-[10px]">Cluster {job.cluster_id}</div>
+            <div className="text-gray-500 text-[10px]">Family {job.cluster_id}</div>
           </div>
         </Html>
       )}
@@ -118,38 +105,87 @@ function JobStar({
   );
 }
 
-// Cluster label
-function ClusterLabel({ cluster }: { cluster: ClusterInfo }) {
+// Cluster Connections - Lines between jobs in same cluster
+function ClusterConnections({
+  cluster,
+  jobs,
+  isSelected,
+}: {
+  cluster: ClusterInfo;
+  jobs: JobPoint[];
+  isSelected: boolean;
+}) {
+  const lines = useMemo(() => {
+    const clusterJobs = jobs.filter(j => j.cluster_id === cluster.id);
+    if (clusterJobs.length < 3) return [];
+    
+    const connections: { start: number[]; end: number[] }[] = [];
+    
+    // Connect each job to nearest neighbors within cluster
+    clusterJobs.forEach((job, i) => {
+      const neighbors = clusterJobs
+        .map((other, j) => ({
+          job: other,
+          dist: Math.sqrt(
+            Math.pow(job.x - other.x, 2) +
+            Math.pow(job.y - other.y, 2) +
+            Math.pow(job.z - other.z, 2)
+          ),
+          index: j
+        }))
+        .filter(d => d.dist > 0 && d.dist < 25) // Only connect nearby jobs
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, 2);
+      
+      neighbors.forEach(n => {
+        if (i < n.index) {
+          connections.push({
+            start: [job.x, job.y, job.z],
+            end: [n.job.x, n.job.y, n.job.z]
+          });
+        }
+      });
+    });
+    
+    return connections.slice(0, 50); // Limit lines for performance
+  }, [cluster, jobs]);
+  
+  if (!isSelected) return null;
+  
   return (
-    <group position={[cluster.centroid.x, cluster.centroid.y + 8, cluster.centroid.z]}>
-      <Html distanceFactor={8}>
-        <div 
-          className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap"
-          style={{ 
-            backgroundColor: `${cluster.color}30`,
-            color: cluster.color,
-            border: `1px solid ${cluster.color}50`
-          }}
-        >
-          {cluster.label}
-        </div>
-      </Html>
-    </group>
+    <>
+      {lines.map((line, i) => (
+        <Line
+          key={i}
+          points={[line.start as [number, number, number], line.end as [number, number, number]]}
+          color={cluster.color}
+          lineWidth={1}
+          transparent
+          opacity={0.3}
+        />
+      ))}
+    </>
   );
 }
 
-// Background starfield
-function BackgroundStars() {
+// Cluster Label
+function ClusterLabel({ cluster }: { cluster: ClusterInfo }) {
   return (
-    <Stars
-      radius={200}
-      depth={100}
-      count={3000}
-      factor={4}
-      saturation={0}
-      fade
-      speed={0.3}
-    />
+    <group position={[cluster.centroid.x, cluster.centroid.y + 6, cluster.centroid.z]}>
+      <Html distanceFactor={12}>
+        <div 
+          className="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm border"
+          style={{ 
+            backgroundColor: 'white',
+            color: cluster.color,
+            borderColor: `${cluster.color}40`
+          }}
+        >
+          {cluster.label}
+          <span className="ml-1 text-gray-400 font-normal">({cluster.size})</span>
+        </div>
+      </Html>
+    </group>
   );
 }
 
@@ -176,10 +212,10 @@ function CameraController({
       enablePan={true}
       enableZoom={true}
       enableRotate={true}
-      minDistance={30}
-      maxDistance={200}
+      minDistance={40}
+      maxDistance={180}
       autoRotate={!target}
-      autoRotateSpeed={0.3}
+      autoRotateSpeed={0.2}
     />
   );
 }
@@ -209,13 +245,10 @@ function SceneContent({
   
   return (
     <>
-      {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <pointLight position={[100, 100, 100]} intensity={0.6} />
-      <pointLight position={[-100, -100, -100]} intensity={0.3} color="#4ECDC4" />
-      
-      {/* Background */}
-      <BackgroundStars />
+      {/* Light mode lighting */}
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[50, 50, 50]} intensity={0.8} />
+      <directionalLight position={[-50, -50, -50]} intensity={0.3} color="#e0e7ff" />
       
       {/* Clickable background for deselection */}
       <mesh onClick={handleBackgroundClick} visible={false}>
@@ -223,14 +256,24 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
       
+      {/* Cluster connections */}
+      {clusters.map(cluster => (
+        <ClusterConnections
+          key={cluster.id}
+          cluster={cluster}
+          jobs={jobs}
+          isSelected={selectedCluster === null || selectedCluster === cluster.id}
+        />
+      ))}
+      
       {/* Cluster labels */}
       {clusters.map(cluster => (
         <ClusterLabel key={cluster.id} cluster={cluster} />
       ))}
       
-      {/* Job stars */}
+      {/* Job nodes */}
       {jobs.map(job => (
-        <JobStar
+        <JobNode
           key={job.id}
           job={job}
           isSelected={selectedJob?.id === job.id}
@@ -250,9 +293,9 @@ function SceneContent({
 // Main Galaxy Scene component
 export default function GalaxyScene(props: GalaxySceneProps) {
   return (
-    <div className="fixed inset-0 bg-gray-950">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
       <Canvas
-        camera={{ position: [0, 0, 100], fov: 60 }}
+        camera={{ position: [0, 0, 90], fov: 50 }}
         dpr={[1, 2]}
         gl={{ antialias: true, alpha: true }}
       >
@@ -260,21 +303,50 @@ export default function GalaxyScene(props: GalaxySceneProps) {
       </Canvas>
       
       {/* Instructions overlay */}
-      <div className="absolute bottom-6 left-6 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl p-4">
-        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Controls</h4>
-        <div className="space-y-1.5 text-xs text-gray-300">
+      <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur border border-gray-200 rounded-xl p-4 shadow-lg">
+        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Navigation</h4>
+        <div className="space-y-1.5 text-xs text-gray-600">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-400" />
-            <span>Click star to select job</span>
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            <span>Click dot to select position</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-400" />
+            <span className="w-2 h-2 rounded-full bg-gray-400" />
             <span>Drag to rotate view</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="w-2 h-2 rounded-full bg-gray-400" />
             <span>Scroll to zoom</span>
           </div>
+        </div>
+      </div>
+      
+      {/* Legend */}
+      <div className="absolute top-20 right-6 bg-white/90 backdrop-blur border border-gray-200 rounded-xl p-4 shadow-lg max-w-xs">
+        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Job Families</h4>
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {props.clusters
+            .sort((a, b) => b.size - a.size)
+            .map(c => (
+              <button
+                key={c.id}
+                onClick={() => props.onClusterSelect(c.id === props.selectedCluster ? null : c.id)}
+                className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
+                  props.selectedCluster === c.id 
+                    ? 'bg-blue-50 ring-1 ring-blue-200' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: c.color }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-gray-900 truncate">{c.label}</div>
+                </div>
+                <span className="text-xs text-gray-400">{c.size}</span>
+              </button>
+            ))}
         </div>
       </div>
     </div>

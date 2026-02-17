@@ -14,6 +14,12 @@ import {
   Scatter,
   ZAxis,
   Cell,
+  PieChart,
+  Pie,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
 } from 'recharts';
 import {
   Search,
@@ -29,9 +35,14 @@ import {
   TrendingUp,
   Target,
   MapPin,
+  Maximize2,
+  ChevronDown,
+  Download,
+  MoreHorizontal,
 } from 'lucide-react';
 import { JobPoint, ClusterInfo } from '@/types';
 import { cn } from '@/lib/utils';
+import ExpandableChart from './ExpandableChart';
 
 interface DashboardViewProps {
   jobs: JobPoint[];
@@ -86,25 +97,27 @@ export default function DashboardView({
   const clusterChartData = useMemo(() => {
     return clusters
       .map(c => ({
-        name: c.label || `Cluster ${c.id}`,
+        name: c.label || `Family ${c.id}`,
         id: c.id,
         size: c.size,
         color: c.color,
+        pct: ((c.size / jobs.length) * 100).toFixed(1),
       }))
       .sort((a, b) => b.size - a.size);
-  }, [clusters]);
+  }, [clusters, jobs.length]);
 
   const scatterData = useMemo(() => {
     return filteredJobs.map(j => ({
       x: j.x,
       y: j.y,
-      z: 20, // Fixed smaller size
+      z: 15,
       id: j.id,
       title: j.title,
       cluster: j.cluster_id,
       color: j.color,
+      clusterName: clusters.find(c => c.id === j.cluster_id)?.label || `Family ${j.cluster_id}`,
     }));
-  }, [filteredJobs]);
+  }, [filteredJobs, clusters]);
 
   const topKeywords = useMemo(() => {
     const keywords: Record<string, number> = {};
@@ -115,24 +128,34 @@ export default function DashboardView({
     });
     return Object.entries(keywords)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
+      .slice(0, 12)
       .map(([name, value]) => ({ name, value }));
   }, [filteredJobs]);
+
+  const clusterDistributionPie = useMemo(() => {
+    return clusters.map(c => ({
+      name: c.label || `Family ${c.id}`,
+      value: c.size,
+      color: c.color,
+    }));
+  }, [clusters]);
 
   // Stats
   const stats = useMemo(() => {
     const totalJobs = filteredJobs.length;
     const uniqueClusters = new Set(filteredJobs.map(j => j.cluster_id)).size;
     const avgSkills = filteredJobs.reduce((acc, j) => acc + j.skills.length, 0) / totalJobs || 0;
+    const standardizationPotential = clusters.filter(c => c.size > 20).length;
     
     return [
       { 
         label: 'Total Positions', 
-        value: totalJobs, 
+        value: totalJobs.toLocaleString(), 
         icon: Briefcase, 
         color: 'text-blue-600', 
         bg: 'bg-blue-50',
-        border: 'border-blue-100'
+        border: 'border-blue-100',
+        trend: '+12%'
       },
       { 
         label: 'Job Families', 
@@ -140,7 +163,8 @@ export default function DashboardView({
         icon: Layers, 
         color: 'text-emerald-600', 
         bg: 'bg-emerald-50',
-        border: 'border-emerald-100'
+        border: 'border-emerald-100',
+        trend: null
       },
       { 
         label: 'Avg Competencies', 
@@ -148,27 +172,29 @@ export default function DashboardView({
         icon: Target, 
         color: 'text-amber-600', 
         bg: 'bg-amber-50',
-        border: 'border-amber-100'
+        border: 'border-amber-100',
+        trend: null
       },
       { 
-        label: 'Unique Keywords', 
-        value: topKeywords.length, 
+        label: 'Standardization Opportunities', 
+        value: standardizationPotential, 
         icon: TrendingUp, 
         color: 'text-purple-600', 
         bg: 'bg-purple-50',
-        border: 'border-purple-100'
+        border: 'border-purple-100',
+        trend: 'High'
       },
     ];
-  }, [filteredJobs, topKeywords.length]);
+  }, [filteredJobs, clusters, topKeywords.length]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50/50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md">
                 <Building2 className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -187,7 +213,7 @@ export default function DashboardView({
                 placeholder="Search positions..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-64 pl-10 pr-10 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-64 pl-10 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
@@ -206,7 +232,7 @@ export default function DashboardView({
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border',
                 showFilters
                   ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
               )}
             >
               <Filter className="w-4 h-4" />
@@ -218,13 +244,19 @@ export default function DashboardView({
               )}
             </button>
 
+            {/* Export Button */}
+            <button className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+
             {/* 3D View Button */}
             <button
               onClick={onSwitchTo3D}
               className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
             >
               <Globe className="w-4 h-4" />
-              Constellation View
+              Constellation
             </button>
           </div>
         </div>
@@ -234,10 +266,11 @@ export default function DashboardView({
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
             className="mt-4 pt-4 border-t border-gray-200"
           >
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-700">Filter by Job Family:</span>
+              <span className="text-sm font-medium text-gray-700">Job Family:</span>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => onClusterSelect(null)}
@@ -245,7 +278,7 @@ export default function DashboardView({
                     'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
                     selectedCluster === null
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
                   )}
                 >
                   All Families
@@ -258,7 +291,7 @@ export default function DashboardView({
                       'px-3 py-1.5 rounded-full text-xs font-medium transition-all border flex items-center gap-2',
                       selectedCluster === c.id
                         ? 'text-white shadow-sm'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
                     )}
                     style={selectedCluster === c.id ? { 
                       backgroundColor: c.color,
@@ -270,8 +303,8 @@ export default function DashboardView({
                       style={{ backgroundColor: c.color }}
                     />
                     {c.label || `Family ${c.id}`}
-                    <span className={selectedCluster === c.id ? 'text-white/80' : 'text-gray-500'}>
-                      ({c.size})
+                    <span className={selectedCluster === c.id ? 'text-white/80' : 'text-gray-400'}>
+                      {c.size}
                     </span>
                   </button>
                 ))}
@@ -283,7 +316,7 @@ export default function DashboardView({
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-[1600px] mx-auto space-y-6">
           {/* Stats Row */}
           <div className="grid grid-cols-4 gap-4">
             {stats.map((stat, i) => (
@@ -292,191 +325,405 @@ export default function DashboardView({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className={cn('bg-white border rounded-xl p-4 shadow-sm', stat.border)}
+                className={cn('bg-white border rounded-xl p-5 shadow-sm', stat.border)}
               >
-                <div className="flex items-center gap-3">
-                  <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', stat.bg)}>
-                    <stat.icon className={cn('w-5 h-5', stat.color)} />
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center', stat.bg)}>
+                      <stat.icon className={cn('w-5 h-5', stat.color)} />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                      <div className="text-xs text-gray-500">{stat.label}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                    <div className="text-xs text-gray-500">{stat.label}</div>
-                  </div>
+                  {stat.trend && (
+                    <span className={cn(
+                      'text-xs font-medium px-2 py-1 rounded-full',
+                      stat.trend === 'High' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                    )}>
+                      {stat.trend}
+                    </span>
+                  )}
                 </div>
               </motion.div>
             ))}
           </div>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Cluster Distribution */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Jobs by Family</h3>
-              <p className="text-xs text-gray-500 mb-4">Distribution across identified job families</p>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={clusterChartData} layout="vertical" margin={{ left: 80 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                  <XAxis type="number" stroke="#6b7280" fontSize={11} />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    stroke="#374151" 
-                    width={75}
-                    tick={{ fontSize: 11, fontWeight: 500 }}
-                  />
-                  <Tooltip 
-                    cursor={{ fill: '#f3f4f6' }}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e5e7eb', 
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Bar dataKey="size" radius={[0, 4, 4, 0]}>
-                    {clusterChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Top Keywords */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Top Competencies</h3>
-              <p className="text-xs text-gray-500 mb-4">Most frequent keywords across positions</p>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={topKeywords} margin={{ bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#6b7280" 
-                    tick={{ fontSize: 10 }} 
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis stroke="#6b7280" fontSize={11} />
-                  <Tooltip 
-                    cursor={{ fill: '#f3f4f6' }}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e5e7eb', 
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Scatter Plot & Job List Row */}
-          <div className="grid grid-cols-3 gap-6">
-            {/* 2D Scatter Plot */}
-            <div className="col-span-2 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Position Landscape</h3>
-              <p className="text-xs text-gray-500 mb-4">2D projection of job similarity space</p>
-              <ResponsiveContainer width="100%" height={280}>
-                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis type="number" dataKey="x" name="X" stroke="#9ca3af" tick={false} axisLine={false} />
-                  <YAxis type="number" dataKey="y" name="Y" stroke="#9ca3af" tick={false} axisLine={false} />
-                  <ZAxis type="number" dataKey="z" range={[30, 30]} />
-                  <Tooltip 
-                    cursor={{ strokeDasharray: '3 3' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
-                            <p className="text-sm font-medium text-gray-900">{data.title}</p>
-                            <p className="text-xs text-gray-500">Family {data.cluster}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Scatter
-                    name="Jobs"
-                    data={scatterData}
-                    onClick={(data) => {
-                      const job = jobs.find(j => j.id === data.id);
-                      if (job) onJobSelect(job);
-                    }}
-                  >
-                    {scatterData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
-              <p className="text-xs text-gray-400 mt-2 text-center">Click a point to view position details</p>
-            </div>
-
-            {/* Cluster Legend */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Job Families</h3>
-              <p className="text-xs text-gray-500 mb-4">Click to filter</p>
-              <div className="space-y-2 max-h-[280px] overflow-y-auto">
-                {clusters
-                  .sort((a, b) => b.size - a.size)
-                  .map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => onClusterSelect(c.id === selectedCluster ? null : c.id)}
-                      className={cn(
-                        'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all border',
-                        selectedCluster === c.id
-                          ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
-                          : 'bg-gray-50 border-transparent hover:bg-gray-100'
-                      )}
-                    >
-                      <div 
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: c.color }}
+          {/* Charts Grid - Row 1 */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Jobs by Family - Large */}
+            <div className="col-span-7">
+              <ExpandableChart
+                title="Jobs by Family"
+                subtitle="Distribution across identified job families"
+                className="h-full"
+                expandedContent={
+                  <div className="h-[500px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={clusterChartData} layout="vertical" margin={{ left: 120, right: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                        <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          stroke="#374151" 
+                          width={110}
+                          tick={{ fontSize: 12, fontWeight: 500 }}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: '#f3f4f6' }}
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            border: '1px solid #e5e7eb', 
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: any) => [`${value} positions`, 'Count']}
+                        />
+                        <Bar dataKey="size" radius={[0, 6, 6, 0]} barSize={28}>
+                          {clusterChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                }
+              >
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={clusterChartData.slice(0, 8)} layout="vertical" margin={{ left: 100, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                      <XAxis type="number" stroke="#6b7280" fontSize={11} />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        stroke="#374151" 
+                        width={90}
+                        tick={{ fontSize: 11, fontWeight: 500 }}
                       />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate">
-                          {c.label || `Family ${c.id}`}
-                        </div>
-                        <div className="text-xs text-gray-500">{c.size} positions</div>
-                      </div>
-                      <ArrowRight className={cn(
-                        'w-4 h-4 flex-shrink-0 transition-colors',
-                        selectedCluster === c.id ? 'text-blue-600' : 'text-gray-300'
-                      )} />
-                    </button>
-                  ))}
-              </div>
+                      <Tooltip 
+                        cursor={{ fill: '#f3f4f6' }}
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Bar dataKey="size" radius={[0, 4, 4, 0]} barSize={22}>
+                        {clusterChartData.slice(0, 8).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </ExpandableChart>
+            </div>
+
+            {/* Top Competencies */}
+            <div className="col-span-5">
+              <ExpandableChart
+                title="Top Competencies"
+                subtitle="Most frequent keywords across positions"
+                className="h-full"
+                expandedContent={
+                  <div className="h-[500px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topKeywords} margin={{ bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#6b7280" 
+                          tick={{ fontSize: 11 }} 
+                          angle={-45}
+                          textAnchor="end"
+                          height={70}
+                        />
+                        <YAxis stroke="#6b7280" fontSize={12} />
+                        <Tooltip 
+                          cursor={{ fill: '#f3f4f6' }}
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            border: '1px solid #e5e7eb', 
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                }
+              >
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topKeywords.slice(0, 8)} margin={{ bottom: 50 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#6b7280" 
+                        tick={{ fontSize: 10 }} 
+                        angle={-35}
+                        textAnchor="end"
+                        height={55}
+                      />
+                      <YAxis stroke="#6b7280" fontSize={11} />
+                      <Tooltip 
+                        cursor={{ fill: '#f3f4f6' }}
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </ExpandableChart>
             </div>
           </div>
 
-          {/* Jobs Table */}
+          {/* Charts Grid - Row 2 */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Position Landscape */}
+            <div className="col-span-8">
+              <ExpandableChart
+                title="Position Landscape"
+                subtitle="2D projection of job similarity space"
+                className="h-full"
+                expandedContent={
+                  <div className="h-[600px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis type="number" dataKey="x" name="X" stroke="#9ca3af" tick={false} axisLine={false} />
+                        <YAxis type="number" dataKey="y" name="Y" stroke="#9ca3af" tick={false} axisLine={false} />
+                        <ZAxis type="number" dataKey="z" range={[20, 20]} />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+                                  <p className="text-sm font-medium text-gray-900">{data.title}</p>
+                                  <p className="text-xs text-gray-500">{data.clusterName}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Scatter
+                          name="Positions"
+                          data={scatterData}
+                          onClick={(data) => {
+                            const job = jobs.find(j => j.id === data.id);
+                            if (job) onJobSelect(job);
+                          }}
+                        >
+                          {scatterData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Scatter>
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                }
+              >
+                <div className="h-[320px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis type="number" dataKey="x" name="X" stroke="#9ca3af" tick={false} axisLine={false} />
+                      <YAxis type="number" dataKey="y" name="Y" stroke="#9ca3af" tick={false} axisLine={false} />
+                      <ZAxis type="number" dataKey="z" range={[15, 15]} />
+                      <Tooltip 
+                        cursor={{ strokeDasharray: '3 3' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+                                <p className="text-sm font-medium text-gray-900">{data.title}</p>
+                                <p className="text-xs text-gray-500">{data.clusterName}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Scatter
+                        name="Positions"
+                        data={scatterData}
+                        onClick={(data) => {
+                          const job = jobs.find(j => j.id === data.id);
+                          if (job) onJobSelect(job);
+                        }}
+                      >
+                        {scatterData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </ExpandableChart>
+            </div>
+
+            {/* Right Column - Family List & Pie */}
+            <div className="col-span-4 space-y-6">
+              {/* Job Families List */}
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Job Families</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Click to filter positions</p>
+                  </div>
+                  <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="max-h-[280px] overflow-y-auto">
+                  {clusters
+                    .sort((a, b) => b.size - a.size)
+                    .map((c, i) => (
+                      <button
+                        key={c.id}
+                        onClick={() => onClusterSelect(c.id === selectedCluster ? null : c.id)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-5 py-3 text-left transition-colors border-b border-gray-50 last:border-0',
+                          selectedCluster === c.id
+                            ? 'bg-blue-50/50'
+                            : 'hover:bg-gray-50'
+                        )}
+                      >
+                        <div 
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: c.color }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {c.label || `Family ${c.id}`}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-gray-500">{c.size} positions</span>
+                            <span className="text-xs text-gray-400">
+                              ({((c.size / jobs.length) * 100).toFixed(1)}%)
+                            </span>
+                          </div>
+                        </div>
+                        {selectedCluster === c.id && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        )}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {/* Distribution Pie Chart */}
+              <ExpandableChart
+                title="Distribution"
+                subtitle="Percentage by job family"
+                expandedContent={
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={clusterDistributionPie}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={80}
+                          outerRadius={140}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {clusterDistributionPie.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            border: '1px solid #e5e7eb', 
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: any, name: any) => [`${value} positions`, name]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                }
+              >
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={clusterDistributionPie.slice(0, 6)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {clusterDistributionPie.slice(0, 6).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </ExpandableChart>
+            </div>
+          </div>
+
+          {/* Positions Table */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">
-                  {selectedCluster !== null 
-                    ? clusters.find(c => c.id === selectedCluster)?.label || 'Selected Family'
-                    : 'All Positions'
-                  }
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {filteredJobs.length} position{filteredJobs.length !== 1 ? 's' : ''} found
-                </p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {selectedCluster !== null 
+                      ? clusters.find(c => c.id === selectedCluster)?.label || 'Selected Family'
+                      : 'All Positions'
+                    }
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {filteredJobs.length.toLocaleString()} position{filteredJobs.length !== 1 ? 's' : ''} found
+                  </p>
+                </div>
+                {selectedCluster !== null && (
+                  <button
+                    onClick={() => onClusterSelect(null)}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 bg-blue-50 rounded-lg"
+                  >
+                    Clear filter
+                  </button>
+                )}
               </div>
-              {selectedCluster !== null && (
-                <button
-                  onClick={() => onClusterSelect(null)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Clear filter
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Show:</span>
+                <select className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white">
+                  <option>15 rows</option>
+                  <option>30 rows</option>
+                  <option>50 rows</option>
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -502,7 +749,7 @@ export default function DashboardView({
                         <span 
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                           style={{ 
-                            backgroundColor: `${job.color}15`,
+                            backgroundColor: `${job.color}12`,
                             color: job.color 
                           }}
                         >
@@ -539,7 +786,7 @@ export default function DashboardView({
                           onClick={() => onJobSelect(job)}
                           className="text-sm font-medium text-blue-600 hover:text-blue-700"
                         >
-                          View
+                          View Details
                         </button>
                       </td>
                     </tr>
@@ -548,7 +795,7 @@ export default function DashboardView({
               </table>
               {filteredJobs.length > 15 && (
                 <div className="px-6 py-3 text-center text-xs text-gray-500 border-t border-gray-100 bg-gray-50/30">
-                  Showing 15 of {filteredJobs.length} positions
+                  Showing 15 of {filteredJobs.length.toLocaleString()} positions
                 </div>
               )}
             </div>
