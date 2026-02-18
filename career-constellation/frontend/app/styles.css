@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Methanex brand blue override (DaisyUI v5 uses oklch) ─────────────────── */
+/* #1B75BC  ≈  oklch(52.5% 0.148 236) */
+:root,
+[data-theme="light"] {
+  --color-primary: oklch(52.5% 0.148 236);
+  --color-primary-content: oklch(100% 0 0);
+}
+
+[data-theme="dark"] {
+  --color-primary: oklch(52.5% 0.148 236);
+  --color-primary-content: oklch(100% 0 0);
+}
+
 html,
 body {
   height: 100%;
@@ -54,4 +67,35 @@ body {
 
 .recharts-tooltip-item {
   color: hsl(var(--bc)) !important;
+}
+
+/* Ensure proper dark mode text colors for Recharts */
+.dark .recharts-cartesian-axis-tick-value {
+  fill: currentColor !important;
+}
+
+.dark .recharts-label {
+  fill: currentColor !important;
+}
+
+/* Explicit text colors for chart axes in both modes */
+.recharts-cartesian-axis-tick-value {
+  fill: hsl(var(--bc)) !important;
+}
+
+.recharts-label {
+  fill: hsl(var(--bc)) !important;
+}
+
+/* Fix for dark mode specifically - use high contrast colors */
+.dark .recharts-text {
+  fill: #e5e7eb !important;
+}
+
+.dark .recharts-cartesian-axis-tick-value {
+  fill: #e5e7eb !important;
+}
+
+.dark .recharts-cartesian-axis-label {
+  fill: #e5e7eb !important;
 }

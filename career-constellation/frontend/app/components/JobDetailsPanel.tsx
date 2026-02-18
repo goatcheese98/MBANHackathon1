@@ -4,8 +4,28 @@ import { gsap } from 'gsap';
 import { 
   X, FileText, Target, Users, MapPin, Building2, 
   Sparkles, Briefcase, GraduationCap, CheckCircle2,
-  ChevronRight, Hash
+  ChevronRight, Hash, Lightbulb, CircleDot, Code, Database,
+  LineChart, PieChart, Calculator, FileSpreadsheet, TrendingUp,
+  Landmark, Wallet, CreditCard, Receipt, Scale, Gavel, Shield,
+  Search, ClipboardList, PenTool, MessageSquare, Megaphone,
+  UserCog, UserPlus, Crown, Award, Star,
+  Settings, Wrench, Hammer, Cog, Gauge, Activity, Zap,
+  Truck, Package, Ship, Globe, Map,
+  HardHat, Factory, Warehouse,
+  Droplets, Flame,
+  Cpu, Network, Laptop, Monitor,
+  Lock, Key, Eye, BadgeCheck,
+  BookOpen,
+  Presentation, Video, Mic, Camera,
+  Clock, Calendar,
+  Mail, Share2,
+  List,
+  Download, Upload, Cloud,
+  AlertTriangle,
+  Heart, ThumbsUp,
+  RefreshCw, ShoppingCart, ShoppingBag, Mountain, FlaskConical, Utensils, Pill, Languages, BoxSelect, Brain, Grid3X3, Palette, Hand
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { JobPoint, SimilarJob } from '@/types';
 import { fetchSimilarJobs } from '@/lib/api';
 import { truncateText, getSimilarityColor } from '@/lib/utils';
@@ -35,6 +55,285 @@ function getKeywordColor(keyword: string): string {
 function getSkillLevelColor(index: number): string {
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6'];
   return colors[index % colors.length];
+}
+
+// Skill to icon mapping
+const SKILL_ICONS: Record<string, LucideIcon> = {
+  // Software & Tools
+  excel: FileSpreadsheet,
+  spreadsheet: FileSpreadsheet,
+  'microsoft excel': FileSpreadsheet,
+  word: FileText,
+  powerpoint: Presentation,
+  'microsoft office': Monitor,
+  sap: Database,
+  erp: Database,
+  salesforce: Cloud,
+  tableau: LineChart,
+  powerbi: PieChart,
+  python: Code,
+  sql: Database,
+  r: LineChart,
+  programming: Code,
+  coding: Code,
+  software: Laptop,
+  
+  // Finance & Accounting
+  accounting: Calculator,
+  finance: Wallet,
+  budgeting: PieChart,
+  budget: PieChart,
+  forecasting: TrendingUp,
+  'financial analysis': LineChart,
+  analysis: LineChart,
+  reporting: ClipboardList,
+  audit: Search,
+  taxation: Receipt,
+  tax: Receipt,
+  payroll: CreditCard,
+  invoicing: Receipt,
+  'accounts payable': Receipt,
+  'accounts receivable': Receipt,
+  bookkeeping: BookOpen,
+  'cost accounting': Calculator,
+  
+  // Management & Leadership
+  management: UserCog,
+  managing: UserCog,
+  leadership: Crown,
+  leading: Crown,
+  supervision: Users,
+  supervising: Users,
+  mentoring: UserPlus,
+  coaching: UserPlus,
+  training: GraduationCap,
+  development: TrendingUp,
+  'team management': Users,
+  'project management': ClipboardList,
+  'program management': ClipboardList,
+  'change management': RefreshCw,
+  'strategic planning': Target,
+  planning: Calendar,
+  organizing: List,
+  delegation: Share2,
+  'performance management': Gauge,
+  
+  // Communication
+  communication: MessageSquare,
+  communicating: MessageSquare,
+  presentation: Presentation,
+  presenting: Presentation,
+  'public speaking': Mic,
+  writing: PenTool,
+  'technical writing': PenTool,
+  documentation: FileText,
+  'business writing': Mail,
+  negotiation: Scale,
+  persuasion: ThumbsUp,
+  'interpersonal skills': Users,
+  collaboration: Users,
+  teamwork: Users,
+  networking: Network,
+  customer: Heart,
+  'customer service': Heart,
+  'client relations': Hand,
+  
+  // Technical & Engineering
+  engineering: Cog,
+  engineer: Cog,
+  technical: Wrench,
+  mechanical: Cog,
+  electrical: Zap,
+  civil: Building2,
+  chemical: FlaskConical,
+  petroleum: Droplets,
+  manufacturing: Factory,
+  production: Factory,
+  operations: Gauge,
+  maintenance: Wrench,
+  repair: Hammer,
+  installation: HardHat,
+  troubleshooting: Search,
+  
+  // Safety & Compliance
+  safety: Shield,
+  'health and safety': Shield,
+  hse: Shield,
+  compliance: BadgeCheck,
+  regulatory: Gavel,
+  'risk management': AlertTriangle,
+  'quality control': CheckCircle2,
+  'quality assurance': CheckCircle2,
+  auditing: Search,
+  inspection: Eye,
+  'emergency response': AlertTriangle,
+  
+  // Logistics & Supply Chain
+  logistics: Truck,
+  supply: Package,
+  'supply chain': Package,
+  procurement: ShoppingCart,
+  purchasing: ShoppingCart,
+  inventory: ClipboardList,
+  warehousing: Warehouse,
+  shipping: Ship,
+  transportation: Truck,
+  distribution: Share2,
+  import: Download,
+  export: Upload,
+  customs: Landmark,
+  
+  // IT & Technology
+  it: Laptop,
+  'information technology': Laptop,
+  cybersecurity: Lock,
+  'data analysis': Database,
+  'data analytics': Database,
+  'business intelligence': Lightbulb,
+  'cloud computing': Cloud,
+  'artificial intelligence': Cpu,
+  'machine learning': Cpu,
+  'web development': Globe,
+  'software development': Laptop,
+  
+  // HR & Admin
+  hr: Users,
+  'human resources': Users,
+  recruiting: UserPlus,
+  hiring: UserPlus,
+  onboarding: UserPlus,
+  'employee relations': Users,
+  compensation: CreditCard,
+  benefits: Heart,
+  administration: Settings,
+  clerical: FileText,
+  'office management': Building2,
+  scheduling: Calendar,
+  
+  // Research & Analysis
+  research: Search,
+  'market research': Search,
+  analytics: LineChart,
+  statistics: Calculator,
+  modeling: BoxSelect,
+  simulation: Activity,
+  'data modeling': Database,
+  investigation: Search,
+  
+  // Creative & Design
+  design: Palette,
+  graphic: Palette,
+  creative: Lightbulb,
+  innovation: Lightbulb,
+  marketing: Megaphone,
+  branding: Award,
+  'content creation': PenTool,
+  'social media': Share2,
+  photography: Camera,
+  video: Video,
+  
+  // Languages
+  english: Globe,
+  spanish: Globe,
+  french: Globe,
+  german: Globe,
+  chinese: Globe,
+  japanese: Globe,
+  multilingual: Globe,
+  translation: Languages,
+  
+  // General
+  problem: Lightbulb,
+  'problem solving': Lightbulb,
+  critical: Brain,
+  'critical thinking': Brain,
+  decision: Scale,
+  'decision making': Scale,
+  time: Clock,
+  'time management': Clock,
+  organization: List,
+  multitasking: Grid3X3,
+  adaptability: RefreshCw,
+  flexibility: RefreshCw,
+  creativity: Palette,
+  initiative: Zap,
+  motivation: Flame,
+  attention: Eye,
+  'attention to detail': Eye,
+  
+  // Industry specific
+  oil: Droplets,
+  gas: Flame,
+  energy: Zap,
+  mining: Mountain,
+  construction: HardHat,
+  healthcare: Heart,
+  pharmaceutical: Pill,
+  legal: Scale,
+  education: GraduationCap,
+  retail: ShoppingBag,
+  hospitality: Utensils,
+};
+
+// Fallback icons by category patterns
+const FALLBACK_ICONS: { pattern: RegExp; icon: LucideIcon }[] = [
+  { pattern: /excel|spreadsheet|sheet/i, icon: FileSpreadsheet },
+  { pattern: /word|document|doc/i, icon: FileText },
+  { pattern: /power|present/i, icon: Presentation },
+  { pattern: /code|program|develop|software/i, icon: Code },
+  { pattern: /data|database|sql|analytic/i, icon: Database },
+  { pattern: /chart|graph|report|metric/i, icon: LineChart },
+  { pattern: /finance|budget|account|cost|money/i, icon: Wallet },
+  { pattern: /tax|audit|compliance/i, icon: BadgeCheck },
+  { pattern: /manage|lead|supervis|direct/i, icon: UserCog },
+  { pattern: /team|people|staff|personnel/i, icon: Users },
+  { pattern: /communicat|speak|write|present/i, icon: MessageSquare },
+  { pattern: /customer|client|service/i, icon: Heart },
+  { pattern: /project|program|plan/i, icon: ClipboardList },
+  { pattern: /engineer|technical|mechanic/i, icon: Cog },
+  { pattern: /safety|security|protect/i, icon: Shield },
+  { pattern: /quality|inspect|test/i, icon: CheckCircle2 },
+  { pattern: /logistic|supply|procure|purchas/i, icon: Package },
+  { pattern: /transport|shipping|deliver/i, icon: Truck },
+  { pattern: /manufactur|production|operat/i, icon: Factory },
+  { pattern: /maintain|repair|fix/i, icon: Wrench },
+  { pattern: /research|investigat|study/i, icon: Search },
+  { pattern: /design|creative|art|graphic/i, icon: Palette },
+  { pattern: /market|advertis|promot/i, icon: Megaphone },
+  { pattern: /learn|train|educat|teach/i, icon: GraduationCap },
+  { pattern: /time|schedul|deadline/i, icon: Clock },
+  { pattern: /problem|solv|troubleshoot/i, icon: Lightbulb },
+  { pattern: /decision|strateg|critical/i, icon: Target },
+  { pattern: /it|computer|digital|tech/i, icon: Laptop },
+  { pattern: /hr|human|recruit|hiring/i, icon: Users },
+  { pattern: /legal|contract|law/i, icon: Scale },
+  { pattern: /admin|clerk|office/i, icon: Settings },
+];
+
+function getSkillIcon(skill: string): LucideIcon {
+  const normalized = skill.toLowerCase().trim();
+  
+  // Direct match
+  if (SKILL_ICONS[normalized]) {
+    return SKILL_ICONS[normalized];
+  }
+  
+  // Partial match in skill name
+  for (const [key, icon] of Object.entries(SKILL_ICONS)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return icon;
+    }
+  }
+  
+  // Pattern matching
+  for (const { pattern, icon } of FALLBACK_ICONS) {
+    if (pattern.test(skill)) {
+      return icon;
+    }
+  }
+  
+  // Ultimate fallback
+  return Lightbulb;
 }
 
 export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetailsPanelProps) {
@@ -191,29 +490,30 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                   <h3 className="font-semibold text-base-content">Competencies</h3>
                   <span className="text-xs text-base-content/40">({job.skills.length} skills)</span>
                 </div>
-                <div className="space-y-2">
-                  {job.skills.length > 0 ? (
-                    job.skills.map((skill, i) => (
-                      <div 
-                        key={i} 
-                        className="flex items-center gap-3 p-3 bg-base-200/50 rounded-xl hover:bg-base-200 transition-colors group"
-                      >
+                {job.skills.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {job.skills.map((skill, i) => {
+                      const SkillIcon = getSkillIcon(skill);
+                      return (
                         <div 
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm"
-                          style={{ backgroundColor: getSkillLevelColor(i) }}
+                          key={i} 
+                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-base-200/50 transition-colors group"
                         >
-                          {skill.charAt(0).toUpperCase()}
+                          <div 
+                            className="w-7 h-7 rounded-md flex items-center justify-center bg-primary/10 text-primary"
+                          >
+                            <SkillIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-sm font-medium text-base-content group-hover:text-primary transition-colors truncate">
+                            {skill}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-base-content group-hover:text-primary transition-colors flex-1">
-                          {skill}
-                        </span>
-                        <CheckCircle2 className="w-4 h-4 text-success opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-base-content/40 italic">No competencies listed</p>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-base-content/40 italic">No competencies listed</p>
+                )}
               </div>
 
               {/* Responsibilities Section */}

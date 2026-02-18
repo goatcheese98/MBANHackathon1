@@ -7,13 +7,14 @@ export interface JobPoint {
   cluster_id: number;
   x: number;
   y: number;
-  z: number;
+  z?: number;  // deprecated
   size: number;
   color: string;
   keywords: string[];
   skills: string[];
   job_level?: string | null;
   scope?: string | null;
+  affinities: Record<number, number>;  // cluster_id → 384D cosine similarity
 }
 
 export interface ClusterInfo {
@@ -26,7 +27,6 @@ export interface ClusterInfo {
   centroid: {
     x: number;
     y: number;
-    z: number;
   };
   jobs: number[];
 }
@@ -36,6 +36,7 @@ export interface ConstellationData {
   clusters: ClusterInfo[];
   total_jobs: number;
   num_clusters: number;
+  cluster_sims: Record<string, number>;  // "a-b" → 384D cosine similarity (a < b)
 }
 
 export interface SimilarJob {
@@ -61,7 +62,6 @@ export interface JobDetails {
   coordinates: {
     x: number;
     y: number;
-    z: number;
   };
 }
 

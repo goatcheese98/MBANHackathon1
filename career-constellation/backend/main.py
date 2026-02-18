@@ -17,7 +17,6 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -47,6 +46,7 @@ model = None
 job_data: Optional[pd.DataFrame] = None
 embeddings: Optional[np.ndarray] = None
 cluster_centers: Optional[np.ndarray] = None
+cluster_cluster_cos: Optional[np.ndarray] = None   # shape: (n_clusters, n_clusters)
 n_standardization_pairs: int = 0
 
 # ---------------------------------------------------------------------------
@@ -62,13 +62,14 @@ class JobPoint(BaseModel):
     cluster_id: int
     x: float
     y: float
-    z: float
+    z: float = 0.0  # deprecated, kept for API compat
     size: float
     color: str
     keywords: List[str]
     skills: List[str]
     job_level: Optional[str] = None
     scope: Optional[str] = None
+    affinities: Dict[int, float] = {}  # cluster_id → 384D cosine similarity
 
 
 class ClusterInfo(BaseModel):
@@ -87,6 +88,7 @@ class ConstellationData(BaseModel):
     clusters: List[ClusterInfo]
     total_jobs: int
     num_clusters: int
+    cluster_sims: Dict[str, float] = {}  # "a-b" → 384D cosine similarity (a < b)
 
 
 class SimilarityRequest(BaseModel):
@@ -314,14 +316,40 @@ def load_and_process_data(csv_path: str, max_jobs: int = 10000) -> pd.DataFrame:
         for i in range(len(df))
     ]
 
-    # ---- 3-D projection (PCA) -----------------------------------------------
-    logger.info("Running PCA for 3-D projection…")
-    pca = PCA(n_components=3, random_state=42)
-    coords = pca.fit_transform(embeddings)
-    for k, col in enumerate(["x", "y", "z"]):
-        df[col] = coords[:, k]
+    # ---- 2-D layout via UMAP (from full 384D embeddings) --------------------
+    logger.info("Running UMAP for 2-D layout from 384D embeddings…")
+    try:
+        import umap as umap_lib
+        reducer = umap_lib.UMAP(
+            n_components=2, random_state=42,
+            n_neighbors=15, min_dist=0.1, metric='cosine',
+        )
+        coords_2d = reducer.fit_transform(embeddings)
+        logger.info("UMAP complete.")
+    except ImportError:
+        logger.warning("umap-learn not installed — falling back to PCA-2D.")
+        from sklearn.decomposition import PCA
+        coords_2d = PCA(n_components=2, random_state=42).fit_transform(embeddings)
+
+    for k, col in enumerate(["x", "y"]):
+        df[col] = coords_2d[:, k]
         df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
         df[col] = df[col] * 100 - 50  # scale to [-50, 50]
+    df["z"] = 0.0  # deprecated, kept for API compatibility
+
+    # ---- Pre-compute 384D cosine affinities (job → each cluster) -----------
+    logger.info("Pre-computing 384D cosine affinities (job → cluster)…")
+    job_cluster_cos = cosine_similarity(embeddings, cluster_centers)  # (n_jobs, n_clusters)
+    df["affinities"] = [
+        {int(cid): float(job_cluster_cos[i, cid]) for cid in range(job_cluster_cos.shape[1])}
+        for i in range(len(df))
+    ]
+
+    # ---- Pre-compute 384D cluster-to-cluster cosine similarities -----------
+    logger.info("Pre-computing 384D cluster-to-cluster cosine similarities…")
+    global cluster_cluster_cos
+    cluster_cluster_cos = cosine_similarity(cluster_centers, cluster_centers)  # (n_clusters, n_clusters)
+    logger.info("384D affinity pre-computation complete.")
 
     # ---- Keywords & skills ---------------------------------------------------
     logger.info("Extracting per-job keywords and skills…")
@@ -371,7 +399,7 @@ def build_cluster_info_list(df: pd.DataFrame) -> List[ClusterInfo]:
             centroid = {
                 "x": float(cdf["x"].mean()),
                 "y": float(cdf["y"].mean()),
-                "z": float(cdf["z"].mean()),
+                "z": 0.0,  # deprecated
             }
 
             all_kw: List[str] = []
@@ -551,7 +579,7 @@ async def root():
 
 @app.get("/api/constellation", response_model=ConstellationData)
 async def get_constellation():
-    """All job points + cluster metadata for 3-D visualisation."""
+    """All job points + cluster metadata for 2-D UMAP visualisation with 384D affinities."""
     if job_data is None:
         raise HTTPException(503, "Data not loaded yet")
 
@@ -571,6 +599,15 @@ async def get_constellation():
                 except Exception:
                     sks = []
 
+            affs = row.get("affinities", {})
+            if isinstance(affs, str):
+                try:
+                    affs = eval(affs)
+                except Exception:
+                    affs = {}
+            # Ensure keys are ints
+            affs = {int(k): float(v) for k, v in affs.items()} if isinstance(affs, dict) else {}
+
             jl = str(row.get("Job Level", "")).strip() or None
             sc = str(row.get("Scope", "")).strip() or None
 
@@ -584,24 +621,35 @@ async def get_constellation():
                     cluster_id=int(row["cluster_id"]),
                     x=float(row["x"]),
                     y=float(row["y"]),
-                    z=float(row["z"]),
+                    z=0.0,
                     size=float(row["size"]),
                     color=str(row["color"]),
                     keywords=kws or [],
                     skills=sks or [],
                     job_level=jl,
                     scope=sc,
+                    affinities=affs,
                 )
             )
         except Exception as exc:
             logger.error(f"Error serialising job row: {exc}")
 
     clusters = build_cluster_info_list(job_data)
+
+    # Build cluster-to-cluster similarity lookup
+    cs_lookup: Dict[str, float] = {}
+    if cluster_cluster_cos is not None:
+        n = cluster_cluster_cos.shape[0]
+        for a in range(n):
+            for b in range(a + 1, n):
+                cs_lookup[f"{a}-{b}"] = float(cluster_cluster_cos[a, b])
+
     return ConstellationData(
         jobs=jobs,
         clusters=clusters,
         total_jobs=len(jobs),
         num_clusters=len(clusters),
+        cluster_sims=cs_lookup,
     )
 
 

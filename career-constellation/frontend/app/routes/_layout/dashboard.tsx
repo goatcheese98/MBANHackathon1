@@ -16,7 +16,7 @@ export const Route = createFileRoute('/_layout/dashboard')({
 function DashboardComponent() {
   const { data } = Route.useLoaderData();
   const [selectedJob, setSelectedJob] = useState<any>(null);
-  const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
+  const [selectedClusters, setSelectedClusters] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
@@ -29,10 +29,10 @@ function DashboardComponent() {
       <DashboardView
         jobs={data.jobs}
         clusters={data.clusters}
-        selectedCluster={selectedCluster}
+        selectedClusters={selectedClusters}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onClusterSelect={setSelectedCluster}
+        onClustersSelect={setSelectedClusters}
         onJobSelect={setSelectedJob}
       />
       

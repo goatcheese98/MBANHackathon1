@@ -6,6 +6,7 @@ export default {
     './index.html',
     './app/**/*.{js,ts,jsx,tsx}',
   ],
+  darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
@@ -30,12 +31,12 @@ export default {
     themes: [
       {
         light: {
-          'primary': '#1e293b',
-          'primary-content': '#ffffff',
-          'secondary': '#64748b',
-          'secondary-content': '#ffffff',
-          'accent': '#3b82f6',
-          'accent-content': '#ffffff',
+          'primary': 'oklch(52.5% 0.148 236)',
+          'primary-content': 'oklch(100% 0 0)',
+          'secondary': 'oklch(52% 0.03 264)',
+          'secondary-content': 'oklch(100% 0 0)',
+          'accent': 'oklch(52.5% 0.148 236)',
+          'accent-content': 'oklch(100% 0 0)',
           'neutral': '#374151',
           'neutral-content': '#ffffff',
           'base-100': '#f9fafb',

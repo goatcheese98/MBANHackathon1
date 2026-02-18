@@ -17,9 +17,6 @@ import ConstellationJobPanel, { AffinityEntry } from '@/components/Constellation
 interface SolarSystemSceneProps { data: ConstellationData; }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
-function dist3(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2);
-}
 function nodeRadius(size: number) { return Math.max(20, Math.min(54, Math.sqrt(size) * 4.4)); }
 function hexAlpha(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
@@ -99,6 +96,23 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
     return { x: dims.w / 2 - sx * s, y: dims.h / 2 - sy * s, scale: s };
   }, [dims]);
 
+  // Refs for panels to attach native wheel listeners
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+
+  // Prevent wheel events on panels from bubbling to container (zoom)
+  useEffect(() => {
+    const stopWheel = (e: WheelEvent) => { e.stopPropagation(); };
+    const left = leftPanelRef.current;
+    const right = rightPanelRef.current;
+    if (left) left.addEventListener('wheel', stopWheel, { passive: false });
+    if (right) right.addEventListener('wheel', stopWheel, { passive: false });
+    return () => {
+      if (left) left.removeEventListener('wheel', stopWheel);
+      if (right) right.removeEventListener('wheel', stopWheel);
+    };
+  }, [selectedClusterId, selectedJob]); // Re-attach when panels appear/disappear
+
   // Wheel zoom (needs passive:false)
   useEffect(() => {
     const el = containerRef.current;
@@ -161,29 +175,35 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
   const nodeMap = useMemo(() => Object.fromEntries(nodes.map(n => [n.id, n])), [nodes]);
 
   const edges = useMemo<Edge[]>(() => {
-    const cs = data.clusters, raw: { a: number; b: number; d: number }[] = [];
-    let maxD = 0;
+    const cs = data.clusters;
+    const raw: { a: number; b: number; sim: number }[] = [];
     for (let i = 0; i < cs.length; i++)
       for (let j = i + 1; j < cs.length; j++) {
-        const d = dist3(cs[i].centroid, cs[j].centroid);
-        raw.push({ a: cs[i].id, b: cs[j].id, d });
-        if (d > maxD) maxD = d;
+        const a = cs[i].id, b = cs[j].id;
+        const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
+        raw.push({ a, b, sim: data.cluster_sims?.[key] ?? 0 });
       }
-    return raw.map(({ a, b, d }) => ({ a, b, sim: 1 - d / maxD }));
-  }, [data.clusters]);
+    // Normalise raw cosine sims to [0,1] so the threshold slider stays intuitive
+    const vals = raw.map(e => e.sim);
+    const minV = Math.min(...vals), maxV = Math.max(...vals);
+    const range = maxV - minV || 1;
+    return raw.map(e => ({ ...e, sim: (e.sim - minV) / range }));
+  }, [data.clusters, data.cluster_sims]);
 
   const jobAffinities = useMemo<Record<number, number>>(() => {
-    if (!selectedJob) return {};
-    let maxD = 0;
-    const dists: Record<number, number> = {};
-    data.clusters.forEach(c => {
-      const d = dist3({ x: selectedJob.x, y: selectedJob.y, z: selectedJob.z }, c.centroid);
-      dists[c.id] = d; if (d > maxD) maxD = d;
-    });
+    if (!selectedJob || !selectedJob.affinities) return {};
+    // Raw 384D cosine similarities for this job to each cluster
+    const raw = selectedJob.affinities;
+    const vals = Object.values(raw);
+    if (vals.length === 0) return {};
+    const minV = Math.min(...vals), maxV = Math.max(...vals);
+    const range = maxV - minV || 1;
+    // Normalise to [0,1] relative to this job's own spread so the home cluster
+    // is always ~1.0 and the least-similar cluster is ~0.0
     const r: Record<number, number> = {};
-    data.clusters.forEach(c => { r[c.id] = 1 - dists[c.id] / maxD; });
+    Object.entries(raw).forEach(([cid, sim]) => { r[+cid] = (sim - minV) / range; });
     return r;
-  }, [selectedJob, data.clusters]);
+  }, [selectedJob]);
 
   const jobMarkerPos = useMemo(() =>
     selectedJob ? toSVG({ x: selectedJob.x, y: selectedJob.y }) : null
@@ -355,7 +375,7 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
 
       {/* ── Left panel — cluster browser ─────────────────────────────────── */}
       {selectedCluster && (
-        <div data-panel="true"
+        <div ref={leftPanelRef} data-panel="true"
           className="absolute left-4 top-4 bottom-4 z-20 flex flex-col overflow-hidden"
           style={{ width: 295, background: PANEL_BG, borderLeft: `4px solid ${selectedCluster.color}`, border: `1px solid ${BORDER}`, borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
           onClick={e => e.stopPropagation()}>
@@ -443,13 +463,15 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
 
       {/* ── Right panel — role detail + affinities ──────────────────────── */}
       {hasJob && selectedJobCluster && (
-        <ConstellationJobPanel
-          job={selectedJob!}
-          homeCluster={selectedJobCluster}
-          affinities={rankedAffinities}
-          onClose={() => setSelectedJob(null)}
-          onClusterFocus={focusCluster}
-        />
+        <div ref={rightPanelRef}>
+          <ConstellationJobPanel
+            job={selectedJob!}
+            homeCluster={selectedJobCluster}
+            affinities={rankedAffinities}
+            onClose={() => setSelectedJob(null)}
+            onClusterFocus={focusCluster}
+          />
+        </div>
       )}
 
       {/* ── Legend ──────────────────────────────────────────────────────── */}
