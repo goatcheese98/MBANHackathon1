@@ -128,65 +128,209 @@ function ChartCard({ title, subtitle, children, onExpand }: any) {
   );
 }
 
+// Reusable chart tooltip hook
+function useChartTooltip() {
+  const [tooltip, setTooltip] = useState<{show: boolean, text: string, subtext?: string, x: number, y: number}>({ show: false, text: '', x: 0, y: 0 });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>();
+  const posRef = useRef({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updatePos = () => {
+      if (tooltipRef.current) {
+        tooltipRef.current.style.transform = `translate3d(${posRef.current.x + 12}px, ${posRef.current.y - 35}px, 0)`;
+      }
+      rafRef.current = undefined;
+    };
+
+    const onMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      posRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      if (!rafRef.current) rafRef.current = requestAnimationFrame(updatePos);
+    };
+
+    const el = containerRef.current;
+    if (el) {
+      el.addEventListener('mousemove', onMove);
+      return () => { el.removeEventListener('mousemove', onMove); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    }
+  }, []);
+
+  const showTooltip = (text: string, subtext?: string) => setTooltip(t => ({ ...t, show: true, text, subtext }));
+  const hideTooltip = () => setTooltip(t => ({ ...t, show: false }));
+
+  const TooltipEl = tooltip.show ? (
+    <div ref={tooltipRef} className="absolute z-50 pointer-events-none bg-base-100/95 border border-base-300 rounded-lg px-3 py-2 shadow-xl" style={{ left: 0, top: 0 }}>
+      <p className="font-semibold text-sm text-base-content whitespace-nowrap">{tooltip.text}</p>
+      {tooltip.subtext && <p className="text-xs text-base-content/70">{tooltip.subtext}</p>}
+    </div>
+  ) : null;
+
+  return { containerRef, showTooltip, hideTooltip, TooltipEl };
+}
+
 function ChartsWidget({ clusterData, keywordData, pieData, onExpand }: any) {
+  // Jobs by Family tooltip
+  const familyTT = useChartTooltip();
+  // Keywords tooltip
+  const keywordTT = useChartTooltip();
+  // Distribution tooltip
+  const pieTT = useChartTooltip();
+
   return (
     <div className="grid grid-cols-3 gap-5">
       <ChartCard title="Jobs by Family" subtitle="Distribution" onExpand={() => onExpand('families')}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={clusterData} layout="vertical" margin={{ left: 80, right: 10, top: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" horizontal={false} />
-            <XAxis type="number" stroke="hsl(var(--bc) / 0.5)" fontSize={10} tickLine={false} />
-            <YAxis dataKey="name" type="category" stroke="hsl(var(--bc) / 0.7)" width={70} tick={{ fontSize: 10 }} tickLine={false} />
-            <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--b1))', border: '1px solid hsl(var(--b3))', borderRadius: '0.5rem' }} />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={16}>{clusterData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}</Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div ref={familyTT.containerRef} className="relative w-full h-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={clusterData} layout="vertical" margin={{ left: 80, right: 10, top: 5, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" horizontal={false} />
+              <XAxis type="number" stroke="hsl(var(--bc) / 0.5)" fontSize={10} tickLine={false} />
+              <YAxis dataKey="name" type="category" stroke="hsl(var(--bc) / 0.7)" width={70} tick={{ fontSize: 10 }} tickLine={false} />
+              <RechartsTooltip content={() => null} />
+              <Bar 
+                dataKey="count" 
+                radius={[0, 4, 4, 0]} 
+                barSize={16}
+                onMouseEnter={(data: any) => familyTT.showTooltip(data.name, `${data.count} jobs`)}
+                onMouseLeave={familyTT.hideTooltip}
+              >
+                {clusterData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          {familyTT.TooltipEl}
+        </div>
       </ChartCard>
 
       <ChartCard title="Top Keywords" subtitle="Most frequent" onExpand={() => onExpand('keywords')}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={keywordData} margin={{ bottom: 40, left: 5, right: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" vertical={false} />
-            <XAxis dataKey="name" stroke="hsl(var(--bc) / 0.5)" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={45} interval={0} tickLine={false} />
-            <YAxis stroke="hsl(var(--bc) / 0.5)" fontSize={10} tickLine={false} />
-            <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--b1))', border: '1px solid hsl(var(--b3))', borderRadius: '0.5rem' }} />
-            <Bar dataKey="count" fill="hsl(var(--p))" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div ref={keywordTT.containerRef} className="relative w-full h-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={keywordData} margin={{ bottom: 40, left: 5, right: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" vertical={false} />
+              <XAxis dataKey="name" stroke="hsl(var(--bc) / 0.5)" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={45} interval={0} tickLine={false} />
+              <YAxis stroke="hsl(var(--bc) / 0.5)" fontSize={10} tickLine={false} />
+              <RechartsTooltip content={() => null} />
+              <Bar 
+                dataKey="count" 
+                fill="#60a5fa"
+                radius={[4, 4, 0, 0]}
+                onMouseEnter={(data: any) => keywordTT.showTooltip(data.name, `Count: ${data.count}`)}
+                onMouseLeave={keywordTT.hideTooltip}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          {keywordTT.TooltipEl}
+        </div>
       </ChartCard>
 
       <ChartCard title="Distribution" subtitle="By family">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={pieData.slice(0, 6)} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value" label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
-              {pieData.slice(0, 6).map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
-            </Pie>
-            <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--b1))', border: '1px solid hsl(var(--b3))', borderRadius: '0.5rem' }} />
-          </PieChart>
-        </ResponsiveContainer>
+        <div ref={pieTT.containerRef} className="relative w-full h-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie 
+                data={pieData.slice(0, 6)} 
+                cx="50%" 
+                cy="50%" 
+                innerRadius={40} 
+                outerRadius={70} 
+                paddingAngle={2} 
+                dataKey="value" 
+                label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`} 
+                labelLine={false}
+                onMouseEnter={(data: any) => pieTT.showTooltip(data.name, `${data.value} positions`)}
+                onMouseLeave={pieTT.hideTooltip}
+              >
+                {pieData.slice(0, 6).map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+              </Pie>
+              <RechartsTooltip content={() => null} />
+            </PieChart>
+          </ResponsiveContainer>
+          {pieTT.TooltipEl}
+        </div>
       </ChartCard>
     </div>
   );
 }
 
 function LandscapeWidget({ scatterData, jobs, onJobSelect, onExpand }: any) {
+  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>();
+  const posRef = useRef({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // RAF-based tooltip positioning - no React re-renders
+  useEffect(() => {
+    const updateTooltip = () => {
+      if (tooltipRef.current) {
+        tooltipRef.current.style.transform = `translate3d(${posRef.current.x + 12}px, ${posRef.current.y - 35}px, 0)`;
+      }
+      rafRef.current = undefined;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      posRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(updateTooltip);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('mousemove', handleMouseMove);
+      return () => {
+        container.removeEventListener('mousemove', handleMouseMove);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
+    }
+  }, []);
+
+  // Static cells - no hover effects
+  const cells = useMemo(() => 
+    scatterData.map((e: any, i: number) => <Cell key={i} fill={e.color} fillOpacity={0.8} />),
+    [scatterData]
+  );
+
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm" style={{ height: '380px' }}>
       <div className="px-5 py-4 border-b border-base-300 flex justify-between items-center">
         <div><h3 className="font-semibold">Position Landscape</h3><p className="text-sm text-base-content/60">2D projection</p></div>
         <button onClick={() => onExpand('landscape')} className="btn btn-ghost btn-sm btn-square"><Maximize2 className="w-4 h-4" /></button>
       </div>
-      <div className="p-4" style={{ height: '320px' }}>
+      <div ref={containerRef} className="p-4 relative" style={{ height: '320px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" />
             <XAxis type="number" dataKey="x" tick={{ fontSize: 10 }} stroke="hsl(var(--bc) / 0.4)" tickLine={false} label={{ value: 'Dimension 1', position: 'insideBottom', offset: -25, fill: 'hsl(var(--bc) / 0.6)', fontSize: 11 }} />
             <YAxis type="number" dataKey="y" tick={{ fontSize: 10 }} stroke="hsl(var(--bc) / 0.4)" tickLine={false} label={{ value: 'Dimension 2', angle: -90, position: 'insideLeft', fill: 'hsl(var(--bc) / 0.6)', fontSize: 11 }} />
-            <ZAxis type="number" range={[25, 25]} />
-            <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }: any) => active && payload?.length ? <div className="bg-base-100 border border-base-300 rounded-lg p-3 shadow-xl"><p className="font-semibold text-sm">{payload[0].payload.title}</p></div> : null} />
-            <Scatter data={scatterData} onClick={(d: any) => { const job = jobs.find((j: JobPoint) => j.id === d.id); if (job) onJobSelect(job); }}>{scatterData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}</Scatter>
+            <ZAxis type="number" range={[40, 40]} />
+            <RechartsTooltip content={() => null} />
+            <Scatter 
+              data={scatterData}
+              onClick={(d: any) => { const job = jobs.find((j: JobPoint) => j.id === d.id); if (job) onJobSelect(job); }}
+              onMouseEnter={(d: any) => setHoveredPoint(d)}
+              onMouseLeave={() => setHoveredPoint(null)}
+              isAnimationActive={false}
+            >
+              {cells}
+            </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
+        
+        {/* Tooltip only - no visual effects on bubbles */}
+        {hoveredPoint && (
+          <div 
+            ref={tooltipRef}
+            className="absolute z-50 pointer-events-none bg-base-100 border border-base-300 rounded-lg px-3 py-2 shadow-lg"
+            style={{ left: 0, top: 0, transform: 'translate3d(0, 0, 0)' }}
+          >
+            <p className="font-semibold text-sm whitespace-nowrap">{hoveredPoint.title}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -310,18 +454,328 @@ function SortableDashboardRow({ id, isEditMode, onToggleVisibility, visible, chi
   );
 }
 
-// Floating Controls
-function FloatingControls({ isEditMode, onToggleEdit, onOpenFilters, activeFiltersCount, onReset }: any) {
+// Header Controls - Horizontal layout
+function HeaderControls({ isEditMode, onToggleEdit, onOpenFilters, activeFiltersCount, onReset }: any) {
   return (
-    <div className="fixed top-20 right-6 z-50 flex flex-col gap-3">
-      <button onClick={onToggleEdit} className={`btn btn-circle btn-lg shadow-2xl transition-all ${isEditMode ? 'btn-primary' : 'btn-neutral hover:btn-primary'}`}>{isEditMode ? <X className="w-6 h-6" /> : <LayoutGrid className="w-6 h-6" />}</button>
+    <div className="flex items-center gap-2">
+      <button onClick={onToggleEdit} className={`btn btn-sm gap-2 ${isEditMode ? 'btn-primary' : 'btn-outline'}`}>
+        {isEditMode ? <X className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+        {isEditMode ? 'Done' : 'Customize'}
+      </button>
       {!isEditMode && (
         <>
-          <button onClick={onOpenFilters} className="btn btn-circle btn-lg btn-neutral hover:btn-primary shadow-2xl relative"><SlidersHorizontal className="w-6 h-6" />{activeFiltersCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-error rounded-full text-xs flex items-center justify-center text-white font-bold">{activeFiltersCount}</span>}</button>
-          <button onClick={onReset} className="btn btn-circle btn-neutral hover:btn-error shadow-2xl"><RotateCcw className="w-5 h-5" /></button>
+          <button onClick={onOpenFilters} className="btn btn-sm btn-outline gap-2 relative">
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFiltersCount > 0 && <span className="ml-1 w-5 h-5 bg-error rounded-full text-xs flex items-center justify-center text-white font-bold">{activeFiltersCount}</span>}
+          </button>
+          <button onClick={onReset} className="btn btn-sm btn-ghost btn-square"><RotateCcw className="w-4 h-4" /></button>
         </>
       )}
     </div>
+  );
+}
+
+// Expanded Chart Modal Component
+function ExpandedChartModal({ 
+  expandedChart, 
+  onClose, 
+  clusterData, 
+  keywordData, 
+  pieData, 
+  scatterData, 
+  jobs, 
+  filteredJobs,
+  onJobSelect 
+}: { 
+  expandedChart: string | null; 
+  onClose: () => void; 
+  clusterData: any[]; 
+  keywordData: any[]; 
+  pieData: any[]; 
+  scatterData: any[];
+  jobs: JobPoint[];
+  filteredJobs: JobPoint[];
+  onJobSelect: (job: JobPoint) => void;
+}) {
+  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate top 20 keywords for expanded view
+  const expandedKeywordData = useMemo(() => {
+    const kws: Record<string, number> = {};
+    filteredJobs.forEach(j => j.keywords.forEach(kw => kws[kw] = (kws[kw] || 0) + 1));
+    return Object.entries(kws).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([name, count]) => ({ name, count }));
+  }, [filteredJobs]);
+
+  // Full scatter data
+  const fullScatterData = useMemo(() => 
+    filteredJobs.map(j => ({ x: j.x, y: j.y, id: j.id, title: j.title, color: j.color, cluster: j.cluster_id })),
+    [filteredJobs]
+  );
+
+  const title = expandedChart === 'families' ? 'Jobs by Family' : expandedChart === 'keywords' ? 'Top Keywords' : 'Position Landscape';
+  const subtitle = expandedChart === 'families' ? 'Complete distribution across all job families' : expandedChart === 'keywords' ? 'Most frequent keywords across positions' : 'Interactive 2D projection of all positions';
+
+  return (
+    <AnimatePresence>
+      {expandedChart && (
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 md:p-8" 
+        onClick={onClose}
+      >
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }} 
+          exit={{ scale: 0.95, opacity: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="card bg-base-100 w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl" 
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-base-300 flex justify-between items-center bg-base-200/50">
+            <div>
+              <h3 className="text-xl font-bold text-base-content">{title}</h3>
+              <p className="text-sm text-base-content/60 mt-1">{subtitle}</p>
+            </div>
+            <button onClick={onClose} className="btn btn-ghost btn-sm btn-square">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 overflow-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
+            {expandedChart === 'families' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Bar Chart */}
+                <div className="lg:col-span-2 card bg-base-200/30 p-4" style={{ height: '500px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={clusterData} layout="vertical" margin={{ left: 120, right: 30, top: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" horizontal={false} />
+                      <XAxis type="number" stroke="hsl(var(--bc) / 0.6)" fontSize={12} tickLine={false} label={{ value: 'Number of Jobs', position: 'insideBottom', offset: -10, fill: 'hsl(var(--bc) / 0.7)' }} />
+                      <YAxis dataKey="name" type="category" stroke="hsl(var(--bc) / 0.8)" width={100} tick={{ fontSize: 12, fontWeight: 500 }} tickLine={false} />
+                      <RechartsTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-base-100 border border-base-300 rounded-lg px-3 py-2 shadow-xl">
+                                <p className="font-semibold text-sm">{payload[0].payload.name}</p>
+                                <p className="text-sm text-base-content/70">{payload[0].value} jobs</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={24}>
+                        {clusterData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Summary Stats */}
+                <div className="space-y-4">
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-3">Distribution Summary</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Total Families</span>
+                        <span className="font-bold">{clusterData.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Total Jobs</span>
+                        <span className="font-bold">{clusterData.reduce((acc, c) => acc + c.count, 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Avg per Family</span>
+                        <span className="font-bold">{(clusterData.reduce((acc, c) => acc + c.count, 0) / clusterData.length).toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Largest Family</span>
+                        <span className="font-bold text-primary">{clusterData[0]?.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-3">All Families</h4>
+                    <div className="space-y-2 max-h-[300px] overflow-auto">
+                      {clusterData.map((cluster, idx) => (
+                        <div key={cluster.name} className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-200 transition-colors">
+                          <span className="text-xs text-base-content/50 w-6">{idx + 1}.</span>
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cluster.color }} />
+                          <span className="text-sm flex-1 truncate">{cluster.name}</span>
+                          <span className="text-sm font-medium">{cluster.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {expandedChart === 'keywords' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Keyword Chart */}
+                <div className="lg:col-span-2 card bg-base-200/30 p-4" style={{ height: '600px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={expandedKeywordData} layout="vertical" margin={{ left: 100, right: 30, top: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" horizontal={false} />
+                      <XAxis type="number" stroke="hsl(var(--bc) / 0.6)" fontSize={12} tickLine={false} />
+                      <YAxis dataKey="name" type="category" stroke="hsl(var(--bc) / 0.8)" width={80} tick={{ fontSize: 12 }} tickLine={false} />
+                      <RechartsTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-base-100 border border-base-300 rounded-lg px-3 py-2 shadow-xl">
+                                <p className="font-semibold text-sm">{payload[0].payload.name}</p>
+                                <p className="text-sm text-base-content/70">Appears in {payload[0].value} positions</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="count" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Keywords Summary */}
+                <div className="space-y-4">
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-3">Keyword Statistics</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Total Unique</span>
+                        <span className="font-bold">{expandedKeywordData.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Most Frequent</span>
+                        <span className="font-bold text-primary">{expandedKeywordData[0]?.name || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Top Count</span>
+                        <span className="font-bold">{expandedKeywordData[0]?.count || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-3">Top 10 Keywords</h4>
+                    <div className="space-y-2">
+                      {expandedKeywordData.slice(0, 10).map((kw, idx) => {
+                        const maxCount = expandedKeywordData[0]?.count || 1;
+                        const percentage = (kw.count / maxCount) * 100;
+                        return (
+                          <div key={kw.name} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-medium">{idx + 1}. {kw.name}</span>
+                              <span className="text-base-content/60">{kw.count}</span>
+                            </div>
+                            <div className="h-2 bg-base-300 rounded-full overflow-hidden">
+                              <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${percentage}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {expandedChart === 'landscape' && (
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Main Scatter Plot */}
+                <div className="lg:col-span-3 card bg-base-200/30 p-4" style={{ height: '600px' }}>
+                  <div ref={containerRef} className="relative w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 50 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="x" 
+                          tick={{ fontSize: 11 }} 
+                          stroke="hsl(var(--bc) / 0.5)" 
+                          tickLine={false}
+                          label={{ value: 'Dimension 1 (PCA)', position: 'insideBottom', offset: -30, fill: 'hsl(var(--bc) / 0.6)', fontSize: 12 }} 
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="y" 
+                          tick={{ fontSize: 11 }} 
+                          stroke="hsl(var(--bc) / 0.5)" 
+                          tickLine={false}
+                          label={{ value: 'Dimension 2 (PCA)', angle: -90, position: 'insideLeft', fill: 'hsl(var(--bc) / 0.6)', fontSize: 12 }} 
+                        />
+                        <ZAxis type="number" range={[50, 50]} />
+                        <RechartsTooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-base-100 border border-base-300 rounded-lg px-3 py-2 shadow-xl">
+                                  <p className="font-semibold text-sm">{data.title}</p>
+                                  <p className="text-xs text-base-content/70">Family {data.cluster}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Scatter 
+                          data={fullScatterData}
+                          onClick={(d: any) => { 
+                            const job = jobs.find((j: JobPoint) => j.id === d.id); 
+                            if (job) onJobSelect(job); 
+                          }}
+                          onMouseEnter={(d: any) => setHoveredPoint(d)}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        >
+                          {fullScatterData.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={hoveredPoint?.id === entry.id ? 1 : 0.7} stroke={hoveredPoint?.id === entry.id ? '#000' : 'none'} strokeWidth={2} />
+                          ))}
+                        </Scatter>
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                {/* Legend & Info */}
+                <div className="space-y-4">
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-3">Position Count</h4>
+                    <div className="text-3xl font-bold">{fullScatterData.length.toLocaleString()}</div>
+                    <p className="text-sm text-base-content/60 mt-1">Visible positions</p>
+                  </div>
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-3">Legend</h4>
+                    <div className="space-y-2 max-h-[300px] overflow-auto">
+                      {pieData.slice(0, 8).map((cluster: any) => (
+                        <div key={cluster.name} className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cluster.color }} />
+                          <span className="text-sm flex-1 truncate">{cluster.name}</span>
+                          <span className="text-xs text-base-content/50">{cluster.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="card bg-base-200/30 p-4">
+                    <h4 className="font-semibold text-sm text-base-content/70 mb-2">Interaction</h4>
+                    <p className="text-xs text-base-content/60">Click any point to view job details. Hover to highlight positions.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -410,7 +864,7 @@ export default function DashboardView({ jobs, clusters, selectedCluster, searchQ
 
   return (
     <div className="h-full flex flex-col bg-base-200/50 overflow-hidden">
-      <FloatingControls isEditMode={isEditMode} onToggleEdit={() => setIsEditMode(!isEditMode)} onOpenFilters={() => setShowFilters(true)} activeFiltersCount={activeFiltersCount} onReset={resetAll} />
+      
       <FilterPanel isOpen={showFilters} onClose={() => setShowFilters(false)} clusters={clusters} selectedCluster={selectedCluster} onClusterSelect={onClusterSelect} searchQuery={searchQuery} onSearchChange={onSearchChange} keywordFilters={keywordFilters} onKeywordFilterChange={setKeywordFilters} allKeywords={allKeywords} />
       <AnimatePresence>{showFilters && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setShowFilters(false)} />}</AnimatePresence>
 
@@ -420,11 +874,11 @@ export default function DashboardView({ jobs, clusters, selectedCluster, searchQ
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-sm text-base-content/60">{isEditMode ? 'Drag to reorder • Toggle visibility' : 'Explore job families and positions'}</p>
           </div>
-          {!isEditMode && <button className="btn btn-outline btn-sm gap-2"><Download className="w-4 h-4" />Export</button>}
+          <HeaderControls isEditMode={isEditMode} onToggleEdit={() => setIsEditMode(!isEditMode)} onOpenFilters={() => setShowFilters(true)} activeFiltersCount={activeFiltersCount} onReset={resetAll} />
         </div>
       </header>
 
-      <div className={`flex-1 overflow-auto p-6 ${isEditMode ? 'pl-16' : 'pl-6'}`}>
+      <div className="flex-1 overflow-auto p-6">
         <div className="max-w-[1600px] mx-auto">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <SortableContext items={visibleWidgetIds} strategy={verticalListSortingStrategy}>
@@ -443,16 +897,17 @@ export default function DashboardView({ jobs, clusters, selectedCluster, searchQ
         </div>
       </div>
 
-      <AnimatePresence>
-        {expandedChart && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-8" onClick={() => setExpandedChart(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="card bg-base-100 w-full max-w-5xl max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="p-6 border-b border-base-300 flex justify-between items-center"><h3 className="text-xl font-bold">{expandedChart === 'families' ? 'Jobs by Family' : expandedChart === 'keywords' ? 'Top Keywords' : 'Position Landscape'}</h3><button onClick={() => setExpandedChart(null)} className="btn btn-ghost btn-sm btn-square"><X className="w-5 h-5" /></button></div>
-              <div className="p-6 h-[500px] flex items-center justify-center text-base-content/50">Expanded view</div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ExpandedChartModal
+        expandedChart={expandedChart}
+        onClose={() => setExpandedChart(null)}
+        clusterData={clusterData}
+        keywordData={keywordData}
+        pieData={pieData}
+        scatterData={scatterData}
+        jobs={jobs}
+        filteredJobs={filteredJobs}
+        onJobSelect={onJobSelect}
+      />
     </div>
   );
 }

@@ -8,4 +8,4 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 
 # Optional: For better AI embeddings (uncomment if you want to install)
-# sentence-transformers>=2.2.0
+sentence-transformers>=2.2.0

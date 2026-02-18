@@ -11,7 +11,10 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
+import { Route as LayoutDashboardImport } from './routes/_layout/dashboard'
+import { Route as LayoutConstellationImport } from './routes/_layout/constellation'
 
 // Create/Update Routes
 
@@ -19,6 +22,23 @@ const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutRoute = LayoutImport.update({
+  id: '/_layout',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutDashboardRoute = LayoutDashboardImport.update({
+  id: '/_layout/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const LayoutConstellationRoute = LayoutConstellationImport.update({
+  id: '/_layout/constellation',
+  path: '/constellation',
+  getParentRoute: () => LayoutRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -32,11 +52,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutImport
+      parentRoute: typeof rootRoute
+    }
+    '/_layout/dashboard': {
+      id: '/_layout/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof LayoutDashboardImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/constellation': {
+      id: '/_layout/constellation'
+      path: '/constellation'
+      fullPath: '/constellation'
+      preLoaderRoute: typeof LayoutConstellationImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({ IndexRoute })
+export const routeTree = rootRoute.addChildren({
+  IndexRoute,
+  LayoutRoute: LayoutRoute.addChildren({
+    LayoutDashboardRoute,
+    LayoutConstellationRoute,
+  }),
+})
 
 /* prettier-ignore-end */

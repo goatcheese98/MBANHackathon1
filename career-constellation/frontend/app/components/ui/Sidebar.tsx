@@ -4,20 +4,18 @@ import {
   Settings,
   HelpCircle
 } from 'lucide-react';
+import { Link, useLocation } from '@tanstack/react-router';
 
-interface SidebarProps {
-  currentView: 'dashboard' | '3d';
-  onViewChange: (view: 'dashboard' | '3d') => void;
-}
-
-export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
+export default function Sidebar() {
+  const location = useLocation();
+  
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: '3d', label: 'Constellation', icon: Network },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+    { id: 'constellation', label: 'Constellation', icon: Network, to: '/constellation' },
   ];
 
   return (
-    <aside className="w-16 lg:w-56 bg-base-100 border-r border-base-300 flex flex-col h-full shrink-0">
+    <aside className="w-16 lg:w-56 bg-base-100 border-r border-base-300 flex flex-col h-full shrink-0 z-50">
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-base-300">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -32,12 +30,12 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
       <nav className="flex-1 px-2 py-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id;
+          const isActive = location.pathname === item.to;
           
           return (
-            <button
+            <Link
               key={item.id}
-              onClick={() => onViewChange(item.id as any)}
+              to={item.to}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary text-primary-content'
@@ -47,7 +45,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
             >
               <Icon className="w-5 h-5 shrink-0" />
               <span className="hidden lg:block">{item.label}</span>
-            </button>
+            </Link>
           );
         })}
       </nav>
