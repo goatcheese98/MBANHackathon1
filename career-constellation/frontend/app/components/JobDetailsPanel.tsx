@@ -84,7 +84,7 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
             <div className="flex items-center gap-2">
               <span 
                 className="w-3 h-3 rounded-full ring-2 ring-offset-2" 
-                style={{ backgroundColor: job.color, ringColor: job.color }}
+                style={{ backgroundColor: job.color }}
               />
               <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">
                 Family {job.cluster_id}
@@ -101,13 +101,20 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
           <h2 className="text-xl font-bold text-base-content leading-tight mb-2">
             {displayTitle}
           </h2>
-          
-          {location && (
-            <div className="flex items-center gap-2 text-sm text-base-content/60">
-              <MapPin className="w-4 h-4" />
-              <span>{location}</span>
-            </div>
-          )}
+
+          <div className="flex items-center flex-wrap gap-2 mt-1">
+            {job.job_level && (
+              <span className="badge badge-sm badge-outline text-primary border-primary/40 font-medium">
+                {job.job_level}
+              </span>
+            )}
+            {location && (
+              <div className="flex items-center gap-1 text-sm text-base-content/60">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>{location}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}

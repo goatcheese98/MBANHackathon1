@@ -12,6 +12,8 @@ export interface JobPoint {
   color: string;
   keywords: string[];
   skills: string[];
+  job_level?: string | null;
+  scope?: string | null;
 }
 
 export interface ClusterInfo {
@@ -53,6 +55,9 @@ export interface JobDetails {
   cluster_id: number;
   keywords: string[];
   skills: string[];
+  job_level?: string | null;
+  scope?: string | null;
+  distance_to_center?: number;
   coordinates: {
     x: number;
     y: number;
@@ -60,9 +65,16 @@ export interface JobDetails {
   };
 }
 
+export interface NearDuplicatePair {
+  job_a: string;
+  job_b: string;
+  similarity: number;
+}
+
 export interface ClusterDetails {
   cluster_id: number;
   size: number;
+  messiness_score?: number;
   jobs: {
     id: number;
     title: string;
@@ -77,4 +89,20 @@ export interface ClusterDetails {
     count: number;
   }[];
   standardization_candidates: string[];
+  near_duplicate_pairs?: NearDuplicatePair[];
+}
+
+export interface StandardizationDuplicate {
+  job_a_id: number;
+  job_a_title: string;
+  job_b_id: number;
+  job_b_title: string;
+  similarity: number;
+  cluster_id: number;
+}
+
+export interface StandardizationDuplicatesResponse {
+  total_pairs: number;
+  threshold: number;
+  duplicates: StandardizationDuplicate[];
 }

@@ -267,16 +267,54 @@ export default function ClusterPanel({
                     Standardization Candidates
                   </h4>
                   <p className="text-xs text-base-content/50 mb-2">
-                    These roles have high similarity and could be merged:
+                    Roles with high content similarity but different titles:
                   </p>
-                  <div className="space-y-1">
-                    {details.standardization_candidates.slice(0, 3).map((title, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm text-base-content/70">
-                        <Target className="w-3 h-3 text-warning" />
-                        {title}
+
+                  {/* Near-duplicate pairs (highest value for standardisation) */}
+                  {details.near_duplicate_pairs && details.near_duplicate_pairs.length > 0 ? (
+                    <div className="space-y-2">
+                      {details.near_duplicate_pairs.slice(0, 4).map((pair, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col gap-0.5 p-2 bg-warning/5 border border-warning/20 rounded-lg text-xs"
+                        >
+                          <span className="text-base-content/80 font-medium truncate">{pair.job_a}</span>
+                          <div className="flex items-center gap-1 text-base-content/40">
+                            <GitMerge className="w-3 h-3 text-warning" />
+                            <span className="truncate">{pair.job_b}</span>
+                            <span className="ml-auto text-warning font-bold shrink-0">
+                              {(pair.similarity * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {details.standardization_candidates.slice(0, 3).map((title, i) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-base-content/70">
+                          <Target className="w-3 h-3 text-warning" />
+                          {title}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Messiness score */}
+                  {details.messiness_score !== undefined && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-base-content/50">
+                      <span className="font-medium">Cluster cohesion:</span>
+                      <div className="flex-1 h-1.5 bg-base-300 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-warning"
+                          style={{ width: `${Math.min(100, details.messiness_score * 100)}%` }}
+                        />
                       </div>
-                    ))}
-                  </div>
+                      <span className="font-mono text-warning">
+                        {details.messiness_score.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

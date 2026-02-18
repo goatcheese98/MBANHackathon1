@@ -18,6 +18,8 @@ interface StatsData {
   avg_jobs_per_cluster: number;
   cluster_distribution: Record<string, number>;
   top_keywords_overall: Record<string, number>;
+  standardization_pairs?: number;
+  job_level_distribution?: Record<string, number>;
 }
 
 export default function StatsDashboard() {
@@ -66,8 +68,8 @@ export default function StatsDashboard() {
     },
     {
       icon: Zap,
-      label: 'Unique Keywords',
-      value: Object.keys(stats.top_keywords_overall).length,
+      label: 'Std. Pairs',
+      value: stats.standardization_pairs ?? Object.keys(stats.top_keywords_overall).length,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
     },
