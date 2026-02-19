@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Bot,
-  ChevronDown
+  ChevronDown,
+  BookOpen
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 
@@ -492,6 +493,8 @@ export default function Sidebar() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
     { id: 'constellation', label: 'Constellation', icon: Network, to: '/constellation' },
+    { id: 'research-hub', label: 'Research Hub', icon: BookOpen, to: '/research-hub' },
+    { id: 'ai-chat', label: 'AI Chat', icon: Bot, to: '/ai-chat' },
   ];
 
   return (

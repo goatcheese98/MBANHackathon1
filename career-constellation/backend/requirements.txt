@@ -9,3 +9,6 @@ python-dotenv>=1.0.0
 
 # Optional: For better AI embeddings (uncomment if you want to install)
 sentence-transformers>=2.2.0
+
+# For RAG Chat with Gemini
+google-generativeai>=0.5.0

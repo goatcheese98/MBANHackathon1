@@ -10,8 +10,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { ConstellationData, ClusterInfo, JobPoint } from '@/types';
-import { X, Search, ChevronRight } from 'lucide-react';
-import ConstellationJobPanel, { AffinityEntry } from '@/components/ConstellationJobPanel';
+import { X, Search, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface SolarSystemSceneProps { data: ConstellationData; }
@@ -47,6 +46,170 @@ interface LayoutNode {
 }
 interface Edge  { a: number; b: number; sim: number; }
 interface VP    { x: number; y: number; scale: number; }
+
+// ─── Legend Panel Component ───────────────────────────────────────────────────
+interface LegendPanelProps {
+  data: ConstellationData;
+  hasJob: boolean;
+  selectedJob: JobPoint | null;
+  selectedJobCluster: ClusterInfo | null;
+  selectedClusterId: number | null;
+  jobAffinities: Record<number, number>;
+  rankedAffinities: { cluster: ClusterInfo; pct: number }[];
+  onClusterFocus: (id: number) => void;
+  onClearJob: () => void;
+}
+
+function LegendPanel({ data, hasJob, selectedJob, selectedJobCluster, selectedClusterId, jobAffinities, rankedAffinities, onClusterFocus, onClearJob }: LegendPanelProps) {
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  
+  if (hasJob && selectedJob && selectedJobCluster) {
+    const job = selectedJob;
+    const homeCluster = selectedJobCluster;
+    const title = cleanTitle(job.title);
+    
+    return (
+      <div data-panel="true" className="absolute top-4 right-4 z-10"
+        style={{ ...OVERLAY, width: 340, maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', padding: 0 }}
+        onClick={e => e.stopPropagation()}>
+        
+        {/* Header with role info */}
+        <div style={{ padding: '16px 16px 12px', borderBottom: `1px solid ${BORDER}` }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: homeCluster.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 10, fontWeight: 600, color: TMU, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{homeCluster.label}</span>
+            </div>
+            <button onClick={onClearJob} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TMU, padding: 2 }}>
+              <X size={14} />
+            </button>
+          </div>
+          <h3 style={{ color: TS, fontWeight: 700, fontSize: 16, margin: 0, lineHeight: 1.3 }}>{title}</h3>
+          {job.job_level && (
+            <span style={{ display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: hexAlpha(homeCluster.color, 0.12), color: homeCluster.color }}>
+              {job.job_level}
+            </span>
+          )}
+        </div>
+
+        <div style={{ padding: '14px 16px' }}>
+          {/* Transition Affinity with progress bars */}
+          <section style={{ marginBottom: 18 }}>
+            <p style={{ ...SL, margin: '0 0 10px' }}>Transition Affinity</p>
+            <p style={{ fontSize: 10, color: TM, marginBottom: 12, lineHeight: 1.5 }}>
+              Skill-overlap likelihood based on this role's embedding position.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rankedAffinities.filter(a => a.pct >= 25).map(({ cluster, pct }) => {
+                const bColor = affinityColor(pct);
+                return (
+                  <div key={cluster.id} onClick={() => onClusterFocus(cluster.id)}
+                    style={{ padding: '8px 10px', background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer' }}
+                    onMouseEnter={e => { const el = e.currentTarget; el.style.background = hexAlpha(cluster.color, 0.06); el.style.borderColor = hexAlpha(cluster.color, 0.35); }}
+                    onMouseLeave={e => { const el = e.currentTarget; el.style.background = '#f8fafc'; el.style.borderColor = BORDER; }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: cluster.color }} />
+                        <span style={{ fontSize: 11.5, color: TS, fontWeight: 500 }}>{cluster.label}</span>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: bColor, fontFamily: 'monospace' }}>{pct}%</span>
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{ height: 4, background: BORDER, borderRadius: 2, overflow: 'hidden', marginBottom: 5 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: bColor, borderRadius: 2 }} />
+                    </div>
+                    {/* Cluster keywords */}
+                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                      {cluster.keywords.slice(0, 3).map((kw, i) => (
+                        <span key={i} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: hexAlpha(cluster.color, 0.10), color: cluster.color }}>{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Summary */}
+          {job.summary && (
+            <section style={{ marginBottom: 16 }}>
+              <p style={{ ...SL, margin: '0 0 8px' }}>Summary</p>
+              <p style={{ fontSize: 11.5, color: TM, lineHeight: 1.55, margin: 0, display: summaryOpen ? 'block' : '-webkit-box', WebkitLineClamp: summaryOpen ? undefined : 3, WebkitBoxOrient: 'vertical', overflow: summaryOpen ? 'visible' : 'hidden' } as React.CSSProperties}>
+                {job.summary}
+              </p>
+              {job.summary.length > 160 && (
+                <button onClick={() => setSummaryOpen(o => !o)} style={{ marginTop: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, color: homeCluster.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {summaryOpen ? <><ChevronUp size={12} /> Show less</> : <><ChevronDown size={12} /> Show more</>}
+                </button>
+              )}
+            </section>
+          )}
+
+          {/* Keywords */}
+          {job.keywords.length > 0 && (
+            <section style={{ marginBottom: 16 }}>
+              <p style={{ ...SL, margin: '0 0 8px' }}>Keywords</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {job.keywords.map((kw, i) => (
+                  <span key={i} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: hexAlpha(homeCluster.color, 0.10), border: `1px solid ${hexAlpha(homeCluster.color, 0.25)}`, color: homeCluster.color }}>
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Competencies */}
+          {job.skills.length > 0 && (
+            <section>
+              <p style={{ ...SL, margin: '0 0 8px' }}>Competencies <span style={{ color: TMU, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>({job.skills.length})</span></p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {job.skills.map((sk, i) => (
+                  <span key={i} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: '#f8fafc', border: `1px solid ${BORDER}`, color: TM }}>
+                    {sk}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '10px 16px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 10, color: TMU }}>ID <span style={{ fontFamily: 'monospace', fontWeight: 600, color: TM }}>{job.id}</span></span>
+          <div style={{ display: 'flex', gap: 8, fontSize: 10, color: TMU }}>
+            <span>{job.keywords.length} keywords</span>
+            <span style={{ color: BORDER }}>·</span>
+            <span>{job.skills.length} skills</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default Job Families view (when no job selected)
+  return (
+    <div data-panel="true" className="absolute top-4 right-4 z-10"
+      style={{ ...OVERLAY, minWidth: 200 }}
+      onClick={e => e.stopPropagation()}>
+      <p style={SL}>Job Families</p>
+      {[...data.clusters].sort((a, b) => b.size - a.size).map(c => {
+        const isSelected = selectedClusterId === c.id;
+        return (
+          <div key={c.id}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, cursor: 'pointer', opacity: selectedClusterId !== null && !isSelected ? 0.35 : 1, transition: 'opacity 0.15s' }}
+            onClick={() => onClusterFocus(c.id)}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: c.color, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ color: TS, fontSize: 11.5, flex: 1, fontFamily: FONT, fontWeight: isSelected ? 700 : 400 }}>
+              {c.label}
+            </span>
+            <span style={{ color: TMU, fontSize: 11, fontFamily: 'monospace' }}>{c.size}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
@@ -96,22 +259,18 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
     return { x: dims.w / 2 - sx * s, y: dims.h / 2 - sy * s, scale: s };
   }, [dims]);
 
-  // Refs for panels to attach native wheel listeners
+  // Ref for left panel to attach native wheel listener
   const leftPanelRef = useRef<HTMLDivElement>(null);
-  const rightPanelRef = useRef<HTMLDivElement>(null);
 
-  // Prevent wheel events on panels from bubbling to container (zoom)
+  // Prevent wheel events on left panel from bubbling to container (zoom)
   useEffect(() => {
     const stopWheel = (e: WheelEvent) => { e.stopPropagation(); };
     const left = leftPanelRef.current;
-    const right = rightPanelRef.current;
     if (left) left.addEventListener('wheel', stopWheel, { passive: false });
-    if (right) right.addEventListener('wheel', stopWheel, { passive: false });
     return () => {
       if (left) left.removeEventListener('wheel', stopWheel);
-      if (right) right.removeEventListener('wheel', stopWheel);
     };
-  }, [selectedClusterId, selectedJob]); // Re-attach when panels appear/disappear
+  }, [selectedClusterId]); // Re-attach when panel appears/disappears
 
   // Wheel zoom (needs passive:false)
   useEffect(() => {
@@ -209,7 +368,7 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
     selectedJob ? toSVG({ x: selectedJob.x, y: selectedJob.y }) : null
   , [selectedJob, toSVG]);
 
-  const rankedAffinities = useMemo<AffinityEntry[]>(() => {
+  const rankedAffinities = useMemo<{ cluster: ClusterInfo; pct: number }[]>(() => {
     if (!selectedJob) return [];
     return Object.entries(jobAffinities)
       .map(([id, sim]) => ({ cluster: data.clusters.find(c => c.id === +id)!, pct: Math.round(sim * 100) }))
@@ -237,12 +396,40 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
     animateTo(centreOn(node.svgX, node.svgY, 1.4));
   }, [nodeMap, animateTo, centreOn]);
 
+  /** Compute viewport that fits all points within the given bounds with padding. */
+  const fitBounds = useCallback((points: { x: number; y: number }[], padding = 80): VP => {
+    if (points.length === 0) return vpRef.current;
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const contentW = maxX - minX + padding * 2;
+    const contentH = maxY - minY + padding * 2;
+    const scale = Math.max(0.3, Math.min(1.8, Math.min(dims.w / contentW, dims.h / contentH)));
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    return { x: dims.w / 2 - cx * scale, y: dims.h / 2 - cy * scale, scale };
+  }, [dims]);
+
   const focusRole = useCallback((job: JobPoint) => {
     setSelectedJob(job);
     setSelectedClusterId(job.cluster_id); // keep cluster panel open
     const pos = toSVG({ x: job.x, y: job.y });
-    animateTo(centreOn(pos.x, pos.y, 2.2), 850); // slightly longer for role
-  }, [animateTo, centreOn, toSVG]);
+    const homeNode = nodeMap[job.cluster_id];
+    
+    // Collect clusters to show: home cluster + those with affinity >= 25%
+    const relevantPoints: { x: number; y: number }[] = [pos];
+    if (homeNode) relevantPoints.push({ x: homeNode.svgX, y: homeNode.svgY });
+    
+    Object.entries(job.affinities || {}).forEach(([cid, sim]) => {
+      const pct = Math.round((sim - Math.min(...Object.values(job.affinities || { '0': 0 }))) / 
+        (Math.max(...Object.values(job.affinities || { '0': 1 })) - Math.min(...Object.values(job.affinities || { '0': 0 })) || 1) * 100);
+      if (pct >= 25) {
+        const node = nodeMap[+cid];
+        if (node) relevantPoints.push({ x: node.svgX, y: node.svgY });
+      }
+    });
+    
+    animateTo(fitBounds(relevantPoints, 100), 850);
+  }, [animateTo, fitBounds, toSVG, nodeMap]);
 
   // ── Click handlers ────────────────────────────────────────────────────────
   const handleNodeClick = useCallback((id: number, e: React.MouseEvent) => {
@@ -303,27 +490,28 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
           {nodes.map(n => {
             const isSel     = n.id === selectedClusterId;
             const isHome    = selectedJob?.cluster_id === n.id;
-            const dimmed    = !hasJob && selectedClusterId !== null && !isSel;
             const affinity  = jobAffinities[n.id] ?? 0;
             const affPct    = Math.round(affinity * 100);
+            const isRelevant = hasJob && (isHome || affPct >= 25);
+            const dimmed    = (selectedClusterId !== null && !isSel && !hasJob) || hasJob;
             const showAff   = hasJob && !isHome && affPct >= 25;
             const aColor    = affinityColor(affPct);
-            const fillAlpha = hasJob ? (isHome ? 0.22 : affinity * 0.22 + 0.04) : isSel ? 0.18 : 0.09;
+            const fillAlpha = hasJob ? (isHome ? 0.35 : affinity * 0.22 + 0.04) : isSel ? 0.18 : 0.09;
 
             return (
               <g key={n.id} data-node="true"
                 transform={`translate(${n.svgX},${n.svgY})`}
                 onClick={ev => handleNodeClick(n.id, ev)}
                 style={{ cursor: 'pointer' }}>
-                {(isSel || isHome) && <circle r={n.r + 8} fill="none" stroke={n.color} strokeWidth={2} opacity={0.4} />}
+                {(isSel || isHome) && <circle r={n.r + 8} fill="none" stroke={n.color} strokeWidth={2} opacity={isHome ? 0.6 : 0.4} />}
                 {showAff && <circle r={n.r + 5} fill="none" stroke={aColor} strokeWidth={1.5} strokeDasharray="3,3" opacity={0.5} />}
                 <circle r={n.r}
                   fill={hexAlpha(n.color, fillAlpha)} stroke={n.color}
                   strokeWidth={isSel || isHome ? 2.5 : 1.5}
-                  strokeOpacity={dimmed ? 0.2 : hasJob && !isHome && affinity < 0.25 ? 0.22 : 1} />
+                  strokeOpacity={dimmed && isHome ? 0.55 : dimmed ? 0.2 : hasJob && !isHome && affinity < 0.25 ? 0.22 : 1} />
                 <text textAnchor="middle" y={-n.r - 11}
                   fill={TS} fontSize={isSel || isHome ? 13.5 : 11.5} fontWeight={isSel || isHome ? 700 : 500}
-                  opacity={dimmed ? 0.22 : hasJob && !isHome && affinity < 0.25 ? 0.25 : 1}
+                  opacity={dimmed && isHome ? 0.65 : dimmed ? 0.22 : hasJob && !isHome && affinity < 0.25 ? 0.25 : 1}
                   style={{ pointerEvents: 'none', fontFamily: FONT }}>
                   {n.label}
                 </text>
@@ -334,14 +522,14 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
                   </text>
                 )}
                 {showAff && (
-                  <text textAnchor="middle" y={-n.r - 11 + 15}
-                    fill={aColor} fontSize={11.5} fontWeight={700} style={{ pointerEvents: 'none', fontFamily: 'monospace' }}>
+                  <text textAnchor="middle" y={-n.r - 22}
+                    fill={aColor} fontSize={14} fontWeight={700} style={{ pointerEvents: 'none', fontFamily: 'monospace' }}>
                     {affPct}%
                   </text>
                 )}
                 {isHome && hasJob && (
-                  <text textAnchor="middle" y={-n.r - 11 + 15}
-                    fill={n.color} fontSize={10} fontWeight={600} opacity={0.85}
+                  <text textAnchor="middle" y={-n.r - 22}
+                    fill={n.color} fontSize={12} fontWeight={600} opacity={0.85}
                     style={{ pointerEvents: 'none', fontFamily: FONT }}>
                     current family
                   </text>
@@ -461,44 +649,18 @@ export default function SolarSystemScene({ data }: SolarSystemSceneProps) {
         </div>
       )}
 
-      {/* ── Right panel — role detail + affinities ──────────────────────── */}
-      {hasJob && selectedJobCluster && (
-        <div ref={rightPanelRef}>
-          <ConstellationJobPanel
-            job={selectedJob!}
-            homeCluster={selectedJobCluster}
-            affinities={rankedAffinities}
-            onClose={() => setSelectedJob(null)}
-            onClusterFocus={focusCluster}
-          />
-        </div>
-      )}
-
-      {/* ── Legend ──────────────────────────────────────────────────────── */}
-      <div data-panel="true" className="absolute top-4 z-10"
-        style={{ right: hasJob ? 376 : 16, transition: 'right 0.25s ease', ...OVERLAY, minWidth: 192 }}
-        onClick={e => e.stopPropagation()}>
-        <p style={SL}>{hasJob ? 'Transition Affinity' : 'Job Families'}</p>
-        {[...data.clusters].sort((a, b) => b.size - a.size).map(c => {
-          const affinity = jobAffinities[c.id];
-          const affPct   = affinity !== undefined && selectedJob && c.id !== selectedJob.cluster_id ? Math.round(affinity * 100) : null;
-          const isHome   = selectedJob?.cluster_id === c.id;
-          const bColor   = affPct !== null ? affinityColor(affPct) : null;
-          return (
-            <div key={c.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, cursor: 'pointer', opacity: !hasJob && selectedClusterId !== null && selectedClusterId !== c.id ? 0.35 : 1, transition: 'opacity 0.15s' }}
-              onClick={() => { setSelectedJob(null); focusCluster(c.id); }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: c.color, display: 'inline-block', flexShrink: 0 }} />
-              <span style={{ color: TS, fontSize: 11.5, flex: 1, fontFamily: FONT, fontWeight: (selectedClusterId === c.id || isHome) ? 700 : 400 }}>
-                {c.label} {isHome && <span style={{ fontSize: 9, color: c.color }}>●</span>}
-              </span>
-              {affPct !== null && bColor
-                ? <span style={{ fontSize: 11.5, fontWeight: 700, fontFamily: 'monospace', color: bColor }}>{affPct}%</span>
-                : <span style={{ color: TMU, fontSize: 11, fontFamily: 'monospace' }}>{c.size}</span>}
-            </div>
-          );
-        })}
-      </div>
+      {/* ── Legend / Job Details Panel ──────────────────────────────────────── */}
+      <LegendPanel
+        data={data}
+        hasJob={hasJob}
+        selectedJob={selectedJob}
+        selectedJobCluster={selectedJobCluster}
+        selectedClusterId={selectedClusterId}
+        jobAffinities={jobAffinities}
+        rankedAffinities={rankedAffinities}
+        onClusterFocus={focusCluster}
+        onClearJob={() => setSelectedJob(null)}
+      />
 
       {/* ── Threshold + hint ────────────────────────────────────────────── */}
       {!hasJob && (

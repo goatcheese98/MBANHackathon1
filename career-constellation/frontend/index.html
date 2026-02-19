@@ -15,10 +15,12 @@
   <body>
     <div id="root"></div>
     <script>
-      // Initialize theme from localStorage to prevent flash
+      // Force light mode as default - only use saved theme if explicitly set
       (function() {
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        const savedTheme = localStorage.getItem('theme');
+        // Always default to light unless user explicitly chose dark
+        const theme = savedTheme === 'dark' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
     <script type="module" src="/app/main.tsx"></script>

@@ -16,10 +16,21 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# Import RAG chat module
+try:
+    from rag_chat import initialize_rag, chat_with_rag, rag_engine
+    RAG_AVAILABLE = True
+except ImportError as e:
+    RAG_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"RAG chat module not available: {e}")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +49,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve report markdown files
+REPORTS_DIR = Path(__file__).parent.parent / "reports"
+if REPORTS_DIR.exists():
+    app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR)), name="reports")
+    logger.info(f"Serving reports from: {REPORTS_DIR}")
 
 # ---------------------------------------------------------------------------
 # Globals
@@ -560,6 +577,14 @@ async def startup_event():
         logger.info("Falling back to sample data.")
         create_sample_data()
         job_data = load_and_process_data("data/sample_jobs.csv")
+    
+    # Initialize RAG chat engine
+    if RAG_AVAILABLE:
+        try:
+            initialize_rag(job_data)
+            logger.info("RAG chat engine initialized.")
+        except Exception as exc:
+            logger.error(f"Error initializing RAG engine: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -575,6 +600,61 @@ async def root():
         "clusters": 15,
         "model": "all-MiniLM-L6-v2 (SBERT)",
     }
+
+
+@app.get("/api/reports")
+async def get_available_reports():
+    """List all available research reports."""
+    reports = []
+    if REPORTS_DIR.exists():
+        for md_file in sorted(REPORTS_DIR.glob("*.md")):
+            try:
+                content = md_file.read_text(encoding='utf-8')
+                # Extract title from frontmatter or first heading
+                title = md_file.stem.replace('_', ' ').title()
+                import re
+                fm_match = re.search(r'^---\s*\ntitle:\s*"([^"]+)"', content, re.MULTILINE)
+                if fm_match:
+                    title = fm_match.group(1)
+                else:
+                    h1_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+                    if h1_match:
+                        title = h1_match.group(1)
+                
+                reports.append({
+                    "id": md_file.stem,
+                    "title": title,
+                    "filename": md_file.name,
+                })
+            except Exception as e:
+                logger.warning(f"Error reading report {md_file}: {e}")
+    
+    return {"reports": reports, "count": len(reports)}
+
+
+@app.get("/api/reports/{report_id}")
+async def get_report_content(report_id: str):
+    """Get content of a specific research report."""
+    if not REPORTS_DIR.exists():
+        raise HTTPException(404, "Reports directory not found")
+    
+    # Security: prevent directory traversal
+    report_id = report_id.replace('..', '').replace('/', '')
+    md_file = REPORTS_DIR / f"{report_id}.md"
+    
+    if not md_file.exists():
+        raise HTTPException(404, f"Report not found: {report_id}")
+    
+    try:
+        content = md_file.read_text(encoding='utf-8')
+        return {
+            "id": report_id,
+            "content": content,
+            "filename": md_file.name,
+        }
+    except Exception as e:
+        logger.error(f"Error reading report {report_id}: {e}")
+        raise HTTPException(500, f"Error reading report: {str(e)}")
 
 
 @app.get("/api/constellation", response_model=ConstellationData)
@@ -938,6 +1018,155 @@ async def get_standardization_duplicates(threshold: float = 0.95, limit: int = 5
     except Exception as exc:
         logger.error(f"Error computing standardisation duplicates: {exc}")
         raise HTTPException(500, str(exc))
+
+
+# ---------------------------------------------------------------------------
+# RAG Chat Endpoints
+# ---------------------------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class DataContextRequest(BaseModel):
+    """Data pipeline context from the frontend"""
+    dataset_name: str = "Hackathon_Datasets_Refined_v5.csv"
+    total_jobs: int = 622
+    num_clusters: int = 15
+    active_filters: Optional[Dict] = None  # Active filters from dashboard
+    selected_clusters: Optional[List[int]] = None  # Clusters being viewed
+    search_query: Optional[str] = None  # Current search query
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+    current_report: Optional[str] = None  # The report the user is currently viewing
+    include_data_context: bool = False  # Whether to include full data pipeline context
+    data_context: Optional[DataContextRequest] = None  # Optional data context from frontend
+
+
+class ChatResponse(BaseModel):
+    response: str
+    sources: List[str] = []
+    rag_enabled: bool
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_endpoint(request: ChatRequest):
+    """
+    RAG-enabled chat endpoint using Gemini 2.0 Flash.
+    Retrieves relevant context from 6 research reports and 622 job postings.
+    Prioritizes the report the user is currently viewing.
+    """
+    if not RAG_AVAILABLE:
+        return ChatResponse(
+            response="AI chat is currently unavailable. Please check back later.",
+            sources=[],
+            rag_enabled=False
+        )
+    
+    if not rag_engine.initialized:
+        return ChatResponse(
+            response="AI chat is still initializing. Please try again in a moment.",
+            sources=[],
+            rag_enabled=False
+        )
+    
+    try:
+        # Convert history to format expected by RAG engine
+        history_dicts = [{"role": msg.role, "content": msg.content} for msg in request.history]
+        
+        # Build data context
+        data_context = None
+        if request.include_data_context:
+            # Get basic data context from global state
+            if job_data is not None:
+                data_context = {
+                    "dataset_name": "Hackathon_Datasets_Refined_v5.csv",
+                    "total_jobs": len(job_data),
+                    "num_clusters": int(job_data["cluster_id"].nunique()),
+                    "available_columns": [c for c in job_data.columns],
+                    "cluster_distribution": {
+                        str(k): int(v)
+                        for k, v in job_data["cluster_id"].value_counts().to_dict().items()
+                    }
+                }
+                # Add frontend-provided context if available
+                if request.data_context:
+                    data_context["active_filters"] = request.data_context.active_filters
+                    data_context["selected_clusters"] = request.data_context.selected_clusters
+                    data_context["search_query"] = request.data_context.search_query
+            
+        # Get response from RAG engine with current report context
+        response_text, sources = chat_with_rag(
+            request.message, 
+            history_dicts, 
+            request.current_report,
+            data_context
+        )
+        
+        return ChatResponse(
+            response=response_text,
+            sources=sources,
+            rag_enabled=True
+        )
+        
+    except Exception as exc:
+        logger.error(f"Error in chat endpoint: {exc}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(500, f"Chat error: {str(exc)}")
+
+
+@app.get("/api/chat/status")
+async def chat_status():
+    """Get the status of the RAG chat engine"""
+    status = {
+        "rag_enabled": RAG_AVAILABLE,
+        "initialized": rag_engine.initialized if RAG_AVAILABLE else False,
+        "reports_loaded": len(rag_engine.chunks) if RAG_AVAILABLE else 0,
+        "jobs_available": len(job_data) if job_data is not None else 0,
+        "dataset": "Hackathon_Datasets_Refined_v5.csv",
+        "num_clusters": int(job_data["cluster_id"].nunique()) if job_data is not None else 0,
+    }
+    
+    # Add cluster summary if data is loaded
+    if job_data is not None:
+        status["clusters"] = []
+        for cid in sorted(job_data["cluster_id"].unique()):
+            cdf = job_data[job_data["cluster_id"] == cid]
+            # Get representative titles
+            titles = cdf["Unified Job Title"].value_counts().head(3).to_dict()
+            status["clusters"].append({
+                "id": int(cid),
+                "size": len(cdf),
+                "top_titles": [{"title": t, "count": c} for t, c in titles.items()]
+            })
+    
+    # Add available reports
+    status["available_reports"] = []
+    if RAG_AVAILABLE and REPORTS_DIR.exists():
+        for md_file in sorted(REPORTS_DIR.glob("*.md")):
+            try:
+                content = md_file.read_text(encoding='utf-8')
+                title = md_file.stem.replace('_', ' ').title()
+                fm_match = re.search(r'^---\s*\ntitle:\s*"([^"]+)"', content, re.MULTILINE)
+                if fm_match:
+                    title = fm_match.group(1)
+                else:
+                    h1_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+                    if h1_match:
+                        title = h1_match.group(1)
+                status["available_reports"].append({
+                    "id": md_file.stem,
+                    "title": title
+                })
+            except Exception:
+                pass
+    
+    return status
 
 
 if __name__ == "__main__":

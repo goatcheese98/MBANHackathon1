@@ -2,6 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Highlight.js styles for markdown code blocks */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #64748b;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: #f472b6;
+  font-weight: bold;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+  color: #fb923c;
+}
+
+.hljs-string,
+.hljs-doctag {
+  color: #4ade80;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id {
+  color: #60a5fa;
+  font-weight: bold;
+}
+
+.hljs-subst {
+  font-weight: normal;
+}
+
+.hljs-type,
+.hljs-class .hljs-title {
+  color: #60a5fa;
+  font-weight: bold;
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-attribute {
+  color: #f472b6;
+  font-weight: normal;
+}
+
+.hljs-regexp,
+.hljs-link {
+  color: #4ade80;
+}
+
+.hljs-symbol,
+.hljs-bullet {
+  color: #c084fc;
+}
+
+.hljs-built_in,
+.hljs-builtin-name {
+  color: #60a5fa;
+}
+
+.hljs-meta {
+  color: #64748b;
+  font-weight: bold;
+}
+
+.hljs-deletion {
+  background: #fee2e2;
+}
+
+.hljs-addition {
+  background: #dcfce7;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
 /* ── Methanex brand blue override (DaisyUI v5 uses oklch) ─────────────────── */
 /* #1B75BC  ≈  oklch(52.5% 0.148 236) */
 :root,
