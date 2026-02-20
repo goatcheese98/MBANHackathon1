@@ -58,7 +58,7 @@ export default function ExpandableChart({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 150 }}
               className="card bg-base-100 border border-base-300 shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >

@@ -27,17 +27,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     sourcemap: mode === 'development',
-    // Ensure assets are properly hashed for caching
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          three: ['three', '@react-three/fiber', '@react-three/drei'],
-          charts: ['recharts', 'd3'],
-          ui: ['framer-motion', 'lucide-react', '@radix-ui/react-tooltip'],
-        },
-      },
-    },
+    // Increase chunk size warning limit for large apps
+    chunkSizeWarningLimit: 2000,
   },
   // Define environment variables for the client
   define: {

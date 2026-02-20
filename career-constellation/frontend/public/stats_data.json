@@ -327,9 +327,9 @@
     "Executive": 18
   },
   "seniority_distribution": {
-    "mean": 1.7865,
-    "median": 1.5625,
-    "min": 0.5,
-    "max": 3.1944
+    "mean": 1.9421,
+    "median": 1.7843,
+    "min": 0.6087,
+    "max": 3.1786
   }
 }

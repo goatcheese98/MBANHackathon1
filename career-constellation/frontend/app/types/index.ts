@@ -16,6 +16,8 @@ export interface JobPoint {
   skills: string[];
   job_level?: string | null;
   scope?: string | null;
+  seniority_score?: number;
+  top_seniority_buckets?: string;
   distance_to_center?: number;
   affinities?: Record<number, number>;  // optional — only available with SBERT embeddings
   similar_jobs?: { employee_id: string; similarity: number }[];

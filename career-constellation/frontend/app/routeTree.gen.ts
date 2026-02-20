@@ -17,6 +17,7 @@ import { Route as LayoutDashboardImport } from './routes/_layout/dashboard'
 import { Route as LayoutConstellationImport } from './routes/_layout/constellation'
 import { Route as LayoutAiChatImport } from './routes/_layout/ai-chat'
 import { Route as LayoutResearchHubImport } from './routes/_layout/research-hub'
+import { Route as LayoutClustersImport } from './routes/_layout/clusters'
 
 // Create/Update Routes
 
@@ -52,6 +53,12 @@ const LayoutAiChatRoute = LayoutAiChatImport.update({
 const LayoutResearchHubRoute = LayoutResearchHubImport.update({
   id: '/_layout/research-hub',
   path: '/research-hub',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const LayoutClustersRoute = LayoutClustersImport.update({
+  id: '/_layout/clusters',
+  path: '/clusters',
   getParentRoute: () => LayoutRoute,
 } as any)
 
@@ -101,6 +108,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutResearchHubImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/clusters': {
+      id: '/_layout/clusters'
+      path: '/clusters'
+      fullPath: '/clusters'
+      preLoaderRoute: typeof LayoutClustersImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -110,6 +124,7 @@ export const routeTree = rootRoute.addChildren({
   IndexRoute,
   LayoutRoute: LayoutRoute.addChildren({
     LayoutDashboardRoute,
+    LayoutClustersRoute,
     LayoutConstellationRoute,
     LayoutAiChatRoute,
     LayoutResearchHubRoute,

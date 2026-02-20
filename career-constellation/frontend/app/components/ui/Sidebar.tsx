@@ -492,6 +492,7 @@ export default function Sidebar() {
   
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+    { id: 'clusters', label: 'Clusters', icon: BarChart3, to: '/clusters' },
     { id: 'constellation', label: 'Constellation', icon: Network, to: '/constellation' },
     { id: 'research-hub', label: 'Research Hub', icon: BookOpen, to: '/research-hub' },
     { id: 'ai-chat', label: 'AI Chat', icon: Bot, to: '/ai-chat' },

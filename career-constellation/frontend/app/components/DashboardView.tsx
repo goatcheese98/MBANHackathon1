@@ -77,11 +77,10 @@ const STORAGE_KEY = 'dashboard-widget-configs';
 
 const DEFAULT_CONFIGS: WidgetConfig[] = [
   { id: 'stats',             visible: true, cols: 12, hideResize: true },
-  { id: 'familyChart',       visible: true, cols: 6 },
-  { id: 'keywordsChart',     visible: true, cols: 6 },
-  { id: 'landscape',         visible: true, cols: 8 },
-  { id: 'distributionChart', visible: true, cols: 4 },
-  { id: 'clustersTable',     visible: true, cols: 12 },
+  { id: 'familyChart',       visible: true, cols: 12 },
+  { id: 'keywordsChart',     visible: true, cols: 12 },
+  { id: 'landscape',         visible: true, cols: 12 },
+  { id: 'distributionChart', visible: true, cols: 12 },
   { id: 'table',             visible: true, cols: 12, locked: true },
 ];
 
@@ -107,10 +106,9 @@ const loadConfigs = (): WidgetConfig[] => {
 
 const WIDGET_TITLES: Record<string, string> = {
   stats:             'Overview Stats',
-  clustersTable:     'Clusters Overview',
   familyChart:       'Jobs by Family',
   keywordsChart:     'Top Keywords',
-  distributionChart: 'Distribution',
+  distributionChart: 'Job Level Distribution',
   landscape:         'Position Landscape',
   table:             'All Positions',
 };
@@ -144,7 +142,7 @@ const STAT_ITEMS = [
   { id: 'total',          label: 'Total Positions',  icon: FileText,  sub: 'Full workforce',          color: 'text-primary',    bg: 'bg-primary/10'   },
   { id: 'families',       label: 'Job Families',     icon: Users,     sub: 'Distinct clusters',       color: 'text-primary',    bg: 'bg-primary/10'   },
   { id: 'avgSkills',      label: 'Avg Competencies', icon: Target,    sub: 'Per position (filtered)', color: 'text-primary',    bg: 'bg-primary/10'   },
-  { id: 'standardizable', label: 'Standardizable',   icon: BarChart3, sub: 'Families with 20+ roles', color: 'text-primary',    bg: 'bg-primary/10'   },
+  { id: 'avgSeniority',    label: 'Avg Seniority Score', icon: BarChart3, sub: 'Filtered positions',      color: 'text-primary',    bg: 'bg-primary/10'   },
 ];
 
 function SortableStatCard({ id, item, value, isEditMode }: { id: string; item: typeof STAT_ITEMS[0]; value: string | number; isEditMode: boolean }) {
@@ -180,7 +178,7 @@ function StatsWidget({ stats, isEditMode }: { stats: any; isEditMode: boolean })
     total:          stats.total.toLocaleString(),
     families:       stats.families,
     avgSkills:      stats.avgSkills,
-    standardizable: stats.standardizable,
+    avgSeniority:   stats.avgSeniority,
   };
 
   const [cardOrder, setCardOrder] = useState(STAT_ITEMS.map(i => i.id));
@@ -410,13 +408,15 @@ function DraggableBubbleChart({ clusterData, width, height }: { clusterData: any
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    // Create simulation with bounds
+    // Create simulation with bounds (slower animation for better visibility)
     const simulation = d3.forceSimulation<BubbleNode>(nodes)
       .force('charge', d3.forceManyBody().strength(5))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide<BubbleNode>().radius(d => d.radius + 2).strength(0.8))
-      .force('x', d3.forceX(width / 2).strength(0.08))
-      .force('y', d3.forceY(height / 2).strength(0.08));
+      .force('x', d3.forceX(width / 2).strength(0.05))
+      .force('y', d3.forceY(height / 2).strength(0.05))
+      .alphaDecay(0.02)  // Slower decay = longer animation
+      .velocityDecay(0.3);  // More damping = smoother movement
 
     // Constrain bubbles within container bounds
     const constrainBounds = (d: BubbleNode) => {
@@ -458,20 +458,20 @@ function DraggableBubbleChart({ clusterData, width, height }: { clusterData: any
         const words = d.name.split(/\s+/);
         const lineHeight = Math.min(d.radius / 3.5, 11) * 1.3;
         
-        // Only show label if bubble is large enough
-        if (d.radius < 30) {
+        // Only show label if bubble is large enough (lowered threshold for better visibility)
+        if (d.radius < 20) {
           text.text('');
           return;
         }
         
         // Truncate text if too long
         let truncated = d.name;
-        if (d.name.length > d.radius / 2.5) {
-          truncated = d.name.substring(0, Math.floor(d.radius / 3)) + '...';
+        if (d.name.length > d.radius / 2) {
+          truncated = d.name.substring(0, Math.floor(d.radius / 2.5)) + '...';
         }
         
         // Simple multi-line for larger bubbles
-        if (d.radius >= 55 && words.length > 2) {
+        if (d.radius >= 45 && words.length > 2) {
           const mid = Math.ceil(words.length / 2);
           text.append('tspan')
             .attr('x', 0)
@@ -652,41 +652,53 @@ function KeywordsChartWidget({ keywordData, onExpand }: { keywordData: any[]; on
   );
 }
 
-function DistributionChartWidget({ pieData }: { pieData: any[] }) {
+// Fixed color palette for known job levels
+const JOB_LEVEL_COLORS: Record<string, string> = {
+  'Junior':       '#22c55e',
+  'Mid':          '#3b82f6',
+  'Senior':       '#6366f1',
+  'Lead':         '#a855f7',
+  'Manager':      '#f59e0b',
+  'Director':     '#ef4444',
+  'Executive':    '#1e293b',
+  'Unclassified': '#94a3b8',
+};
+function jobLevelColor(level: string): string {
+  return JOB_LEVEL_COLORS[level] ?? '#cbd5e1';
+}
+
+function JobLevelDistributionWidget({ levelData }: { levelData: { name: string; value: number; color: string }[] }) {
   const { containerRef, showTooltip, hideTooltip, TooltipEl } = useChartTooltip();
-  // Sort by count descending so the largest families always appear
-  const sorted = useMemo(() => [...pieData].sort((a, b) => b.value - a.value), [pieData]);
-  const top8 = sorted.slice(0, 8);
-  const total = top8.reduce((s: number, d: any) => s + d.value, 0);
+  const total = levelData.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm" style={{ height: '440px' }}>
       <div className="px-5 py-3.5 border-b border-base-300">
-        <h3 className="font-semibold text-sm">Distribution</h3>
-        <p className="text-xs text-base-content/50 mt-0.5">Top families by size</p>
+        <h3 className="font-semibold text-sm">Job Level Distribution</h3>
+        <p className="text-xs text-base-content/50 mt-0.5">Seniority breakdown · {total} positions</p>
       </div>
       <div className="flex flex-col" style={{ height: '376px' }}>
-        {/* Pie */}
+        {/* Donut */}
         <div ref={containerRef} className="relative flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={top8}
+                data={levelData}
                 cx="50%"
                 cy="50%"
-                innerRadius={52}
-                outerRadius={88}
+                innerRadius={58}
+                outerRadius={96}
                 paddingAngle={2}
                 dataKey="value"
                 label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
                 isAnimationActive={false}
               >
-                {top8.map((e: any, i: number) => (
+                {levelData.map((e, i) => (
                   <Cell
                     key={i}
                     fill={e.color}
-                    onMouseEnter={() => showTooltip(e.name, `${e.value} of ${total} positions`)}
+                    onMouseEnter={() => showTooltip(e.name, `${e.value} of ${total} positions (${((e.value / total) * 100).toFixed(1)}%)`)}
                     onMouseLeave={hideTooltip}
                   />
                 ))}
@@ -696,12 +708,12 @@ function DistributionChartWidget({ pieData }: { pieData: any[] }) {
           {TooltipEl}
         </div>
         {/* Legend */}
-        <div className="px-4 pb-3 grid grid-cols-2 gap-x-3 gap-y-1" style={{ maxHeight: '148px', overflowY: 'auto' }}>
-          {top8.map((e: any, i: number) => (
-            <div key={i} className="flex items-center gap-1.5 min-w-0">
+        <div className="px-4 pb-3 grid grid-cols-2 gap-x-4 gap-y-1.5" style={{ maxHeight: '148px', overflowY: 'auto' }}>
+          {levelData.map((e, i) => (
+            <div key={i} className="flex items-center gap-2 min-w-0">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: e.color }} />
-              <span className="text-[10px] text-base-content/70 truncate" title={e.name}>{e.name}</span>
-              <span className="text-[10px] font-semibold text-base-content/50 flex-shrink-0 ml-auto">{e.value}</span>
+              <span className="text-[11px] text-base-content/70 truncate flex-1" title={e.name}>{e.name}</span>
+              <span className="text-[11px] font-semibold text-base-content/50 flex-shrink-0">{e.value}</span>
             </div>
           ))}
         </div>
@@ -840,211 +852,6 @@ function SearchFieldSelector({
               </label>
             ))}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Clusters Table Widget ────────────────────────────────────────────────────
-
-function ClustersTableWidget({ clusters, top5Keywords }: { clusters: ClusterInfo[]; top5Keywords: string[] }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<'family' | 'label' | 'size'>('size');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const CLUSTERS_PER_PAGE = 10;
-
-  const filteredClusters = useMemo(() => {
-    // Create a copy to avoid mutating the original clusters array
-    let result = [...clusters];
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      result = result.filter(c => 
-        c.label.toLowerCase().includes(q) ||
-        c.keywords.some(k => k.toLowerCase().includes(q)) ||
-        c.example_titles.some(t => t.toLowerCase().includes(q))
-      );
-    }
-    // Sort the copy
-    result.sort((a, b) => {
-      let comparison = 0;
-      switch (sortField) {
-        case 'family':
-          comparison = a.id - b.id;
-          break;
-        case 'label':
-          comparison = a.label.localeCompare(b.label);
-          break;
-        case 'size':
-          comparison = a.size - b.size;
-          break;
-      }
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-    return result;
-  }, [clusters, searchTerm, sortField, sortDirection]);
-
-  // Reset to page 1 when search or sort changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, sortField, sortDirection]);
-
-  const totalPages = Math.ceil(filteredClusters.length / CLUSTERS_PER_PAGE);
-  const paginatedClusters = useMemo(() => {
-    const start = (currentPage - 1) * CLUSTERS_PER_PAGE;
-    return filteredClusters.slice(start, start + CLUSTERS_PER_PAGE);
-  }, [filteredClusters, currentPage]);
-
-  const handleSort = (field: 'family' | 'label' | 'size') => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-  };
-
-  const SortIcon = ({ field }: { field: 'family' | 'label' | 'size' }) => {
-    if (sortField !== field) return <span className="text-base-content/20 text-xs">↕</span>;
-    return sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
-  };
-
-  return (
-    <div className="card bg-base-100 rounded-2xl shadow-lg overflow-hidden border-0">
-      <div className="px-6 py-5 flex items-center justify-between bg-gradient-to-r from-base-100 to-base-200/50">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-bold tracking-tight">Clusters</h3>
-          <span className="badge badge-lg badge-primary font-semibold shadow-sm">{clusters.length} families</span>
-        </div>
-        <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
-          <input 
-            type="text" 
-            placeholder="Search clusters, keywords, or titles..."
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="input input-bordered w-full pl-10 pr-10 text-sm rounded-xl shadow-sm focus:shadow-md transition-shadow" 
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm('')} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="table table-zebra w-full">
-          <thead className="bg-base-200/60 text-sm font-semibold">
-            <tr>
-              <th 
-                className="py-3.5 cursor-pointer hover:bg-base-300/40 transition-colors font-semibold text-base-content/70" 
-                style={{ width: '8%' }}
-                onClick={() => handleSort('family')}
-              >
-                <div className="flex items-center gap-1">
-                  Family
-                  <SortIcon field="family" />
-                </div>
-              </th>
-              <th 
-                className="py-3.5 cursor-pointer hover:bg-base-300/40 transition-colors font-semibold text-base-content/70" 
-                style={{ width: '28%' }}
-                onClick={() => handleSort('label')}
-              >
-                <div className="flex items-center gap-1">
-                  Label
-                  <SortIcon field="label" />
-                </div>
-              </th>
-              <th className="py-3.5 font-semibold text-base-content/70" style={{ width: '25%' }}>Keyword</th>
-              <th className="py-3.5 font-semibold text-base-content/70" style={{ width: '30%' }}>Example Titles</th>
-              <th 
-                className="py-3.5 cursor-pointer hover:bg-base-300/40 transition-colors text-right font-semibold text-base-content/70" 
-                style={{ width: '9%' }}
-                onClick={() => handleSort('size')}
-              >
-                <div className="flex items-center justify-end gap-1">
-                  Jobs
-                  <SortIcon field="size" />
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedClusters.map((cluster) => (
-              <tr 
-                key={cluster.id} 
-                className="hover:bg-base-200/40 transition-all duration-150 border-b border-base-200/50 last:border-0"
-              >
-                <td className="py-4">
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm ring-2 ring-white dark:ring-base-300" 
-                      style={{ backgroundColor: cluster.color }} 
-                    />
-                    <span className="font-mono text-sm text-base-content/70">{cluster.id}</span>
-                  </div>
-                </td>
-                <td>
-                  <span className="font-semibold text-sm text-base-content/90">{cluster.label}</span>
-                </td>
-                <td>
-                  <div className="flex flex-wrap gap-1">
-                    {cluster.keywords.map((kw, i) => (
-                      <span
-                        key={i}
-                        className="badge badge-xs border-0 rounded-md shadow-sm font-medium"
-                        style={{
-                          backgroundColor: getKeywordColor(kw, top5Keywords),
-                          color: '#fff',
-                        }}
-                      >
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td>
-                  <div className="space-y-0.5 max-h-32 overflow-y-auto">
-                    {cluster.example_titles.map((title, i) => (
-                      <p key={i} className="text-xs text-base-content/70">
-                        • {title}
-                      </p>
-                    ))}
-                  </div>
-                </td>
-                <td className="text-right">
-                  <span className="badge badge-outline badge-sm rounded-lg font-semibold">{cluster.size}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {/* Pagination */}
-      {filteredClusters.length > 0 && (
-        <div className="flex items-center justify-between px-6 py-3 border-t border-base-300/70 bg-base-200/30">
-          <span className="text-sm text-base-content/60 font-medium">
-            Showing {((currentPage - 1) * CLUSTERS_PER_PAGE) + 1} - {Math.min(currentPage * CLUSTERS_PER_PAGE, filteredClusters.length)} of {filteredClusters.length} clusters
-          </span>
-          {totalPages > 1 && (
-            <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="btn btn-ghost btn-xs btn-square rounded-lg"><ChevronsLeft className="w-4 h-4" /></button>
-              <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1} className="btn btn-ghost btn-xs btn-square rounded-lg"><ChevronLeft className="w-4 h-4" /></button>
-              <span className="px-3 py-1 text-sm font-medium">Page {currentPage} of {totalPages}</span>
-              <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages} className="btn btn-ghost btn-xs btn-square rounded-lg"><ChevronRight className="w-4 h-4" /></button>
-              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="btn btn-ghost btn-xs btn-square rounded-lg"><ChevronsRight className="w-4 h-4" /></button>
-            </div>
-          )}
-        </div>
-      )}
-      {filteredClusters.length === 0 && (
-        <div className="py-12 text-center">
-          <p className="text-base-content/50">No clusters found matching &quot;{searchTerm}&quot;</p>
         </div>
       )}
     </div>
@@ -1482,7 +1289,7 @@ function ExpandedChartModal({
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 150 }}
             className="card bg-base-100 w-full max-w-7xl max-h-[95vh] overflow-hidden shadow-2xl rounded-2xl"
             onClick={e => e.stopPropagation()}
           >
@@ -1807,12 +1614,28 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
     [clusters, clusterCounts]
   );
 
+  const jobLevelData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredJobs.forEach(j => {
+      const level = j.job_level ?? 'Unclassified';
+      counts[level] = (counts[level] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value, color: jobLevelColor(name) }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredJobs]);
+
   const stats = {
-    total:          jobs.length,                   // always full dataset
-    filtered:       filteredJobs.length,           // currently visible
+    total:          jobs.length,
+    filtered:       filteredJobs.length,
     families:       new Set(filteredJobs.map(j => j.cluster_id)).size,
     avgSkills:      (filteredJobs.reduce((acc, j) => acc + j.skills.length, 0) / (filteredJobs.length || 1)).toFixed(1),
-    standardizable: clusters.filter(c => c.size > 20).length,
+    avgSeniority:   (() => {
+      const withScore = filteredJobs.filter(j => j.seniority_score != null);
+      if (withScore.length === 0) return '—';
+      const avg = withScore.reduce((acc, j) => acc + (j.seniority_score ?? 0), 0) / withScore.length;
+      return avg.toFixed(2);
+    })(),
   };
 
   const activeFiltersCount = selectedClusters.length + keywordFilters.length + (searchQuery && searchFields.some(f => f.checked) ? 1 : 0);
@@ -1828,10 +1651,9 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
   const renderWidget = (id: string) => {
     switch (id) {
       case 'stats':             return <StatsWidget stats={stats} isEditMode={isEditMode} />;
-      case 'clustersTable':     return <ClustersTableWidget clusters={clusters} top5Keywords={globalTop5Keywords} />;
       case 'familyChart':       return <FamilyChartWidget clusterData={clusterData} onExpand={() => setExpandedChart('families')} />;
       case 'keywordsChart':     return <KeywordsChartWidget keywordData={keywordData} onExpand={() => setExpandedChart('keywords')} />;
-      case 'distributionChart': return <DistributionChartWidget pieData={pieData} />;
+      case 'distributionChart': return <JobLevelDistributionWidget levelData={jobLevelData} />;
       case 'landscape':         return <LandscapeWidget scatterData={scatterData} jobs={jobs} onJobSelect={onJobSelect} onExpand={setExpandedChart} />;
       default: return null;
     }

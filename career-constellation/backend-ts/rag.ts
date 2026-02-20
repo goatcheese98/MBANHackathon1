@@ -154,12 +154,18 @@ export class RAGSystem {
     score: number; cluster: string;
   }> = [];
 
-  constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is not set');
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.chatModel = this.genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-    this.embeddingModel = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
+  constructor(apiKey?: string) {
+    const key = apiKey || process.env.GEMINI_API_KEY;
+    if (key) {
+      this.genAI = new GoogleGenerativeAI(key.trim());
+      this.chatModel = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      this.embeddingModel = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
+    } else {
+      console.log('⚠️ GEMINI_API_KEY not set - AI features will be disabled');
+      this.genAI = null as any;
+      this.chatModel = null;
+      this.embeddingModel = null;
+    }
   }
 
   // ── Initialization ─────────────────────────────────────────────────────────
@@ -610,6 +616,15 @@ ${sample}
     history: Array<{ role: string; content: string }> = [],
     enableRAG = true
   ): Promise<{ response: string; sources: string[]; rag_enabled: boolean }> {
+    // Check if AI is available
+    if (!this.chatModel) {
+      return {
+        response: 'AI chat is not available. Please set GEMINI_API_KEY to enable this feature.',
+        sources: [],
+        rag_enabled: false,
+      };
+    }
+
     await this.initialize();
 
     let context = '';
@@ -773,9 +788,23 @@ ${context ? `## Retrieved Context\n${context}\n\nBase your answer primarily on t
 // ─── Singleton ────────────────────────────────────────────────────────────────
 
 let ragInstance: RAGSystem | null = null;
+let lastApiKey: string | undefined = undefined;
+let globalApiKey: string | undefined = undefined;
+
+export function setApiKey(key: string) {
+  globalApiKey = key;
+}
 
 export function getRAG(): RAGSystem {
-  if (!ragInstance) ragInstance = new RAGSystem();
+  const currentApiKey = globalApiKey || process.env.GEMINI_API_KEY;
+
+  // Recreate instance if API key changes or if we don't have an instance
+  if (!ragInstance || currentApiKey !== lastApiKey) {
+    console.log(currentApiKey ? '🤖 Creating RAG with Gemini API' : '⚠️ Creating RAG without Gemini API');
+    lastApiKey = currentApiKey;
+    ragInstance = new RAGSystem(currentApiKey);
+  }
+
   return ragInstance;
 }
 
