@@ -4,9 +4,9 @@
   "description": "TypeScript RAG Backend for Career Constellation - Replaces Python",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "tsx --env-file=.env server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node --env-file=.env dist/server.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

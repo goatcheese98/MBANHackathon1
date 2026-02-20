@@ -16,7 +16,7 @@ function RootComponent() {
     } else if (savedTheme === 'light') {
       document.documentElement.classList.remove('dark');
       document.documentElement.setAttribute('data-theme', 'light');
-    } else if (savedTheme === 'system' || !savedTheme) {
+    } else if (savedTheme === 'system') {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (prefersDark) {
         document.documentElement.classList.add('dark');
@@ -25,6 +25,10 @@ function RootComponent() {
         document.documentElement.classList.remove('dark');
         document.documentElement.setAttribute('data-theme', 'light');
       }
+    } else if (!savedTheme) {
+      // Default to light mode on first load
+      document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
     }
   }, []);
 

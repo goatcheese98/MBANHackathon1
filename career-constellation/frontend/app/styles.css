@@ -116,8 +116,34 @@ body {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Smooth shadows for cards and elevated surfaces */
+.shadow-soft {
+  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-elevated {
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.1), 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+}
+
+/* Refined focus styles */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--p) / 0.15);
+}
+
+/* Smooth transitions */
+.card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
 }
 
 /* Custom scrollbar */
@@ -152,8 +178,9 @@ body {
 .recharts-default-tooltip {
   background-color: hsl(var(--b1)) !important;
   border: 1px solid hsl(var(--b3)) !important;
-  border-radius: 0.5rem !important;
+  border-radius: 0.75rem !important;
   color: hsl(var(--bc)) !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.15) !important;
 }
 
 .recharts-tooltip-label {

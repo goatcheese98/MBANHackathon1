@@ -2,33 +2,133 @@
   "total_jobs": 622,
   "num_clusters": 25,
   "avg_jobs_per_cluster": 24.88,
-  "cluster_distribution": {
-    "0": 52,
-    "1": 28,
-    "2": 22,
-    "3": 23,
-    "4": 24,
-    "5": 11,
-    "6": 51,
-    "7": 41,
-    "8": 25,
-    "9": 31,
-    "10": 14,
-    "11": 16,
-    "12": 32,
-    "13": 15,
-    "14": 18,
-    "15": 12,
-    "16": 22,
-    "17": 18,
-    "18": 23,
-    "19": 50,
-    "20": 38,
-    "21": 11,
-    "22": 22,
-    "23": 18,
-    "24": 5
-  },
+  "cluster_distribution": [
+    {
+      "cluster_id": 0,
+      "label": "Applications & Business Systems Analysis",
+      "count": 52
+    },
+    {
+      "cluster_id": 1,
+      "label": "Treasury & Corporate Finance Leadership",
+      "count": 28
+    },
+    {
+      "cluster_id": 2,
+      "label": "Customer Service & Logistics (Supply Chain Execution)",
+      "count": 22
+    },
+    {
+      "cluster_id": 3,
+      "label": "Corporate Admin Support (Office Coordination)",
+      "count": 23
+    },
+    {
+      "cluster_id": 4,
+      "label": "IT Applications Support",
+      "count": 24
+    },
+    {
+      "cluster_id": 5,
+      "label": "Process Engineering",
+      "count": 11
+    },
+    {
+      "cluster_id": 6,
+      "label": "Financial Reporting & Accounting (Controllership)",
+      "count": 51
+    },
+    {
+      "cluster_id": 7,
+      "label": "HR Operations",
+      "count": 41
+    },
+    {
+      "cluster_id": 8,
+      "label": "Plant Operations & HSE / Shift & Lab Support",
+      "count": 25
+    },
+    {
+      "cluster_id": 9,
+      "label": "Corporate Communications & Sustainability/ESG",
+      "count": 31
+    },
+    {
+      "cluster_id": 10,
+      "label": "Engineering (Electrical / Instrumentation & Controls)",
+      "count": 14
+    },
+    {
+      "cluster_id": 11,
+      "label": "Internal Audit & SOX Compliance",
+      "count": 16
+    },
+    {
+      "cluster_id": 12,
+      "label": "Tax & Transfer Pricing",
+      "count": 32
+    },
+    {
+      "cluster_id": 13,
+      "label": "Legal (Corporate Counsel / Transactions)",
+      "count": 15
+    },
+    {
+      "cluster_id": 14,
+      "label": "Executive & Legal Administrative Support",
+      "count": 18
+    },
+    {
+      "cluster_id": 15,
+      "label": "Front Office & Reception",
+      "count": 12
+    },
+    {
+      "cluster_id": 16,
+      "label": "Process Safety",
+      "count": 22
+    },
+    {
+      "cluster_id": 17,
+      "label": "Maintenance & Reliability Engineering",
+      "count": 18
+    },
+    {
+      "cluster_id": 18,
+      "label": "Oracle Finance Systems",
+      "count": 23
+    },
+    {
+      "cluster_id": 19,
+      "label": "Enterprise IT / Technology Services",
+      "count": 50
+    },
+    {
+      "cluster_id": 20,
+      "label": "Global Supply Chain Planning",
+      "count": 38
+    },
+    {
+      "cluster_id": 21,
+      "label": "Procurement / Buying",
+      "count": 11
+    },
+    {
+      "cluster_id": 22,
+      "label": "IT Service Desk & End-User Support",
+      "count": 22
+    },
+    {
+      "cluster_id": 23,
+      "label": "Mechanical Maintenance Planning",
+      "count": 18
+    },
+    {
+      "cluster_id": 24,
+      "label": "Admin Support (Document Control)",
+      "count": 5
+    }
+  ],
   "cluster_labels": {
     "0": "Applications & Business Systems Analysis",
     "1": "Treasury & Corporate Finance Leadership",
@@ -56,29 +156,180 @@
     "23": "Mechanical Maintenance Planning",
     "24": "Admin Support (Document Control)"
   },
-  "top_keywords_overall": {
-    "corporate": 94,
-    "global": 88,
-    "financial": 79,
-    "analyst": 76,
-    "systems analyst": 76,
-    "solutions": 75,
-    "project": 68,
-    "accounting": 62,
-    "supply": 60,
-    "supply chain": 60,
-    "chain": 60,
-    "applications": 52,
-    "systems": 52,
-    "reporting": 51,
-    "analysis": 51,
-    "finance": 51,
-    "technology": 50,
-    "services": 50,
-    "manufacturing": 50,
-    "safety": 47
+  "top_keywords_overall": [
+    {
+      "keyword": "corporate",
+      "count": 94
+    },
+    {
+      "keyword": "global",
+      "count": 88
+    },
+    {
+      "keyword": "financial",
+      "count": 79
+    },
+    {
+      "keyword": "analyst",
+      "count": 76
+    },
+    {
+      "keyword": "systems analyst",
+      "count": 76
+    },
+    {
+      "keyword": "solutions",
+      "count": 75
+    },
+    {
+      "keyword": "project",
+      "count": 68
+    },
+    {
+      "keyword": "accounting",
+      "count": 62
+    },
+    {
+      "keyword": "supply",
+      "count": 60
+    },
+    {
+      "keyword": "supply chain",
+      "count": 60
+    },
+    {
+      "keyword": "chain",
+      "count": 60
+    },
+    {
+      "keyword": "applications",
+      "count": 52
+    },
+    {
+      "keyword": "systems",
+      "count": 52
+    },
+    {
+      "keyword": "reporting",
+      "count": 51
+    },
+    {
+      "keyword": "analysis",
+      "count": 51
+    },
+    {
+      "keyword": "finance",
+      "count": 51
+    },
+    {
+      "keyword": "technology",
+      "count": 50
+    },
+    {
+      "keyword": "services",
+      "count": 50
+    },
+    {
+      "keyword": "manufacturing",
+      "count": 50
+    },
+    {
+      "keyword": "safety",
+      "count": 47
+    }
+  ],
+  "top_skills_overall": [
+    {
+      "skill": "Engineering/Maintenance",
+      "count": 212
+    },
+    {
+      "skill": "Excel",
+      "count": 200
+    },
+    {
+      "skill": "Supply Chain",
+      "count": 177
+    },
+    {
+      "skill": "Project Management",
+      "count": 167
+    },
+    {
+      "skill": "Oracle/ERP",
+      "count": 146
+    },
+    {
+      "skill": "Safety/EHS",
+      "count": 129
+    },
+    {
+      "skill": "Tax/Transfer Pricing",
+      "count": 122
+    },
+    {
+      "skill": "ITSM/Service Desk",
+      "count": 122
+    },
+    {
+      "skill": "Finance/Reporting",
+      "count": 101
+    },
+    {
+      "skill": "Admin/EA",
+      "count": 89
+    },
+    {
+      "skill": "HR/Payroll",
+      "count": 76
+    },
+    {
+      "skill": "Audit/SOX",
+      "count": 67
+    },
+    {
+      "skill": "IT/Business Systems",
+      "count": 62
+    },
+    {
+      "skill": "ESG/Sustainability",
+      "count": 58
+    },
+    {
+      "skill": "Communications/PR",
+      "count": 56
+    },
+    {
+      "skill": "Data Analysis",
+      "count": 47
+    },
+    {
+      "skill": "Legal/Contracts",
+      "count": 34
+    },
+    {
+      "skill": "SQL",
+      "count": 15
+    },
+    {
+      "skill": "Python",
+      "count": 3
+    }
+  ],
+  "standardization_pairs": 563,
+  "job_level_distribution": {
+    "Manager": 142,
+    "Mid": 206,
+    "Unclassified": 78,
+    "Junior": 122,
+    "Director": 31,
+    "Senior": 25,
+    "Executive": 18
   },
-  "top_skills_overall": {},
-  "standardization_pairs": 0,
-  "job_level_distribution": {}
+  "seniority_distribution": {
+    "mean": 1.7865,
+    "median": 1.5625,
+    "min": 0.5,
+    "max": 3.1944
+  }
 }

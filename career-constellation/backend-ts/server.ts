@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 // Determine project root: if we're in dist/, go up one more level
 const isCompiled = __dirname.endsWith('dist');
-const projectRoot = isCompiled 
+const projectRoot = isCompiled
   ? path.join(__dirname, '..', '..')  // dist/ -> backend-ts/ -> career-constellation/
   : path.join(__dirname, '..');       // backend-ts/ -> career-constellation/
 
@@ -97,11 +97,21 @@ app.get('/api/clusters/:id/details', (req, res) => {
     keywordCounts[k] = (keywordCounts[k] || 0) + 1;
   }));
 
+  // Get real near-duplicate pairs for this cluster from the RAG system
+  const allPairs = ragEngine.getNearDuplicatePairs(0.95);
+  const clusterPairs = allPairs.filter(
+    (p: any) => clusterJobs.some((j: any) => j.employee_id === p.emp1 || j.employee_id === p.emp2)
+  );
+
+  // Messiness score = duplicate pairs / cluster size
+  const messinessRaw = clusterJobs.length > 0 ? clusterPairs.length / clusterJobs.length : 0;
+  const messinessScore = Math.min(messinessRaw, 1.0);
+
   res.json({
     cluster_id: clusterData.id,
     label: clusterData.label,
     size: clusterData.size,
-    messiness_score: 0,
+    messiness_score: messinessScore,
     jobs: clusterJobs.map((j: any) => ({
       id: j.id,
       employee_id: j.employee_id,
@@ -117,7 +127,11 @@ app.get('/api/clusters/:id/details', (req, res) => {
       .slice(0, 10)
       .map(([keyword, count]) => ({ keyword, count })),
     standardization_candidates: clusterJobs.slice(0, 5).map((j: any) => j.title),
-    near_duplicate_pairs: [],
+    near_duplicate_pairs: clusterPairs.slice(0, 20).map((p: any) => ({
+      emp1: p.emp1, title1: p.title1,
+      emp2: p.emp2, title2: p.title2,
+      similarity: p.score,
+    })),
   });
 });
 
@@ -187,13 +201,31 @@ app.get('/api/reports/:id', async (req, res) => {
   }
 });
 
-// Standardization duplicates (static for now)
+// Standardization: real near-duplicate pairs from similarity CSV
 app.get('/api/standardization/duplicates', (req, res) => {
+  const threshold = parseFloat(req.query.threshold as string) || 0.95;
+  const pairs = ragEngine.getNearDuplicatePairs(threshold);
   res.json({
-    total_pairs: 0,
-    threshold: parseFloat(req.query.threshold as string) || 0.95,
-    duplicates: [],
+    total_pairs: pairs.length,
+    threshold,
+    duplicates: pairs.slice(0, 100).map((p: any) => ({
+      employee_1: p.emp1,
+      title_1: p.title1,
+      employee_2: p.emp2,
+      title_2: p.title2,
+      similarity_score: p.score,
+      cluster: p.cluster,
+    })),
   });
+});
+
+// Cluster messiness ranking
+app.get('/api/standardization/messiness', (req, res) => {
+  const messiness = ragEngine.getClusterMessiness();
+  const ranked = Object.entries(messiness)
+    .map(([id, v]: [string, any]) => ({ cluster_id: id, ...v }))
+    .sort((a: any, b: any) => b.messiness - a.messiness);
+  res.json({ clusters: ranked, total_clusters: ranked.length });
 });
 
 const PORT = process.env.PORT || 8000;
