@@ -1,16 +1,24 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Papa from 'papaparse';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Keep global for type safety, but don't execute logic if not in Node
+let projectRoot = '';
 
-const isCompiled = __dirname.endsWith('dist');
-const projectRoot = isCompiled
-  ? path.join(__dirname, '..', '..')
-  : path.join(__dirname, '..');
+function getProjectRoot() {
+  if (projectRoot) return projectRoot;
+  if (typeof process === 'undefined' || !import.meta.url) return '';
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const isCompiled = __dirname.endsWith('dist');
+  projectRoot = isCompiled
+    ? path.join(__dirname, '..', '..')
+    : path.join(__dirname, '..');
+  return projectRoot;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,31 +164,95 @@ export class RAGSystem {
 
   // ── Initialization ─────────────────────────────────────────────────────────
 
-  async initialize(): Promise<void> {
+  async initialize(data?: {
+    jobs?: Job[],
+    similarity?: SimilarityRecord[],
+    stats?: any,
+    reports?: Array<{ name: string, content: string }>
+  }): Promise<void> {
     if (this.isInitialized) return;
     console.log('🚀 Initializing Enhanced RAG system...');
 
-    await Promise.all([
-      this.loadReports(),
-      this.loadJobsFromCSV(),
-      this.loadSimilarityData(),
-      this.loadStats(),
-    ]);
+    if (data) {
+      if (data.jobs) this.jobs = data.jobs;
+      if (data.similarity) this.similarityRecords = data.similarity;
+      if (data.stats) this.stats = data.stats;
+
+      if (data.reports) {
+        for (const report of data.reports) {
+          this.processReportContent(report.name, report.content);
+        }
+      }
+
+      // If we provided jobs but no chunks yet, create job chunks
+      if (this.jobs.length > 0 && this.chunks.length === 0) {
+        for (const job of this.jobs) {
+          this.chunks.push({
+            id: `job-${job.id}`,
+            content: this.formatJobForRAG(job),
+            type: 'job',
+            source: 'constellation_data',
+            metadata: {
+              job_id: job.id,
+              employee_id: job.employee_id,
+              title: job.title,
+              cluster_id: job.cluster_id,
+              cluster_label: job.cluster_label,
+            },
+          });
+        }
+      }
+    } else {
+      // Fallback to FS-based loading (Node.js)
+      await Promise.all([
+        this.loadReports(),
+        this.loadJobsFromCSV(),
+        this.loadSimilarityData(),
+        this.loadStats(),
+      ]);
+    }
 
     // Build similarity-derived chunks (near-dups, cluster profiles)
     this.buildSimilarityChunks();
 
     // Embed all chunks in parallel batches
-    await this.embedAllChunks();
+    // In Worker environment, we might want to skip this or use pre-calculated embeddings
+    // For now, only embed if we are not in a Worker or if specifically requested
+    if (typeof process !== 'undefined' && process.env.SKIP_EMBEDDINGS !== 'true') {
+      await this.embedAllChunks();
+    }
 
     this.isInitialized = true;
-    console.log(`✅ RAG ready — ${this.chunks.length} chunks, ${this.jobs.length} jobs, ${this.nearDuplicatePairs.length} near-duplicate pairs`);
+    console.log(`✅ RAG ready — ${this.chunks.length} chunks, ${this.jobs.length} jobs`);
+  }
+
+  private processReportContent(filename: string, content: string): void {
+    const sections = content.split(/\n(?=#{1,3} )/);
+
+    for (const section of sections) {
+      if (!section.trim()) continue;
+      const headerMatch = section.match(/^(#{1,3})\s+(.+)/);
+      if (!headerMatch) continue;
+
+      const header = section.split('\n')[0];
+      const body = section.split('\n').slice(1).join('\n').trim();
+
+      for (const sub of splitIntoChunks(`${header}\n\n${body}`)) {
+        this.chunks.push({
+          id: `report-${filename}-${this.chunks.length}`,
+          content: sub,
+          type: 'report',
+          source: filename,
+          metadata: { header, sourceFile: filename },
+        });
+      }
+    }
   }
 
   // ── Data Loaders ──────────────────────────────────────────────────────────
 
   private async loadReports(): Promise<void> {
-    const reportsDir = path.join(projectRoot, 'reports');
+    const reportsDir = path.join(getProjectRoot(), 'reports');
     const files = (await fs.readdir(reportsDir)).filter(f => f.endsWith('.md'));
 
     for (const file of files) {
@@ -210,7 +282,7 @@ export class RAGSystem {
   }
 
   private async loadJobsFromCSV(): Promise<void> {
-    const csvPath = path.join(projectRoot, 'constellation_data_full.csv');
+    const csvPath = path.join(getProjectRoot(), 'constellation_data_full.csv');
     const fileContent = await fs.readFile(csvPath, 'utf-8');
     const { data: records } = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
 
@@ -258,8 +330,8 @@ export class RAGSystem {
   private async loadSimilarityData(): Promise<void> {
     // Try both possible locations
     const paths = [
-      path.join(projectRoot, '..', 'employees_with_skills_and_similarity.csv'),
-      path.join(projectRoot, 'employees_with_skills_and_similarity.csv'),
+      path.join(getProjectRoot(), '..', 'employees_with_skills_and_similarity.csv'),
+      path.join(getProjectRoot(), 'employees_with_skills_and_similarity.csv'),
     ];
 
     let fileContent: string | null = null;
@@ -320,7 +392,7 @@ export class RAGSystem {
   }
 
   private async loadStats(): Promise<void> {
-    const statsPath = path.join(projectRoot, 'frontend', 'public', 'stats_data.json');
+    const statsPath = path.join(getProjectRoot(), 'frontend', 'public', 'stats_data.json');
     try {
       this.stats = JSON.parse(await fs.readFile(statsPath, 'utf-8'));
       console.log(`  📊 Stats loaded`);

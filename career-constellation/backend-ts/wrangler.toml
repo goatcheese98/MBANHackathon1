@@ -1,0 +1,10 @@
+name = "career-constellation-api"
+main = "worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = [ "nodejs_compat" ]
+
+[vars]
+# GEMINI_API_KEY will be set via Cloudflare Dashboard or 'wrangler secret put'
+
+[observability]
+enabled = true
