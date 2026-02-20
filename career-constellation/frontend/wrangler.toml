@@ -1,0 +1,13 @@
+name = "career-constellation"
+compatibility_date = "2024-09-23"
+
+# Cloudflare Pages configuration
+[site]
+bucket = "./dist"
+
+# Required field for Pages
+pages_build_output_dir = "./dist"
+
+# Build configuration
+[build]
+command = "npm run build"

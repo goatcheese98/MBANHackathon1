@@ -52,7 +52,9 @@ yarn-error.log*
 Thumbs.db
 
 # Data
-data/
+# Keep JSON data files for deployment
+!data/*.json
+data/raw/
 *.csv
 *.xlsx
 

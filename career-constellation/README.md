@@ -34,7 +34,7 @@ An AI-powered 3D visualization platform for job description clustering and stand
 - npm or yarn
 - Gemini API key (for AI chat)
 
-### Start the Application
+### Start the Application (Local Development)
 
 ```bash
 cd career-constellation
@@ -55,35 +55,75 @@ echo "GEMINI_API_KEY=your_api_key_here" > .env
 
 Get your API key at: https://makersuite.google.com/app/apikey
 
+## ☁️ Cloudflare Deployment
+
+Deploy the entire application to Cloudflare's edge network:
+
+### One-Command Deploy
+
+```bash
+./deploy.sh all production
+```
+
+### Prerequisites
+- Cloudflare account
+- Wrangler CLI: `npm install -g wrangler`
+- Logged in: `wrangler login`
+
+### Manual Deployment
+
+**Backend (Worker):**
+```bash
+cd backend-ts
+wrangler secret put GEMINI_API_KEY
+npm run deploy
+```
+
+**Frontend (Pages):**
+```bash
+cd frontend
+export VITE_API_URL=https://your-worker.workers.dev
+npm run build
+npm run deploy:prod
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
 ## 📁 Project Structure
 
 ```
 career-constellation/
-├── backend-ts/                 # TypeScript/Express backend
-│   ├── server.ts              # Express server
+├── backend-ts/                 # TypeScript backend (Cloudflare Worker)
+│   ├── worker.ts              # Cloudflare Worker entry
 │   ├── rag.ts                 # RAG system with Gemini
-│   ├── package.json
-│   └── dist/                  # Compiled JavaScript
-├── frontend/                   # React/TypeScript frontend
+│   ├── wrangler.toml          # Worker configuration
+│   └── package.json
+├── frontend/                   # React/TypeScript frontend (Cloudflare Pages)
 │   ├── app/                   # Vite app
 │   ├── components/            # React components
 │   ├── lib/api.ts             # API client
-│   └── public/                # Static assets
+│   ├── public/                # Static assets
+│   └── wrangler.toml          # Pages configuration
+├── data/                       # Shared JSON data files
+│   ├── constellation_data.json
+│   └── stats_data.json
 ├── reports/                    # 6 research reports
-├── start.sh                    # Startup script
+├── start.sh                    # Local development startup
+├── deploy.sh                   # Cloudflare deployment
 └── README.md
 ```
 
 ## 🔧 Technology Stack
 
 ### Backend
-- **Express.js** - Fast web framework
+- **Cloudflare Workers** - Edge serverless platform
+- **Hono** - Fast, lightweight web framework
 - **TypeScript** - Type safety
 - **Google Generative AI** - Gemini for chat
 - **Natural.js** - TF-IDF for retrieval
-- **PapaParse** - CSV parsing
 
 ### Frontend
+- **Cloudflare Pages** - Edge static site hosting
 - **React 18** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool

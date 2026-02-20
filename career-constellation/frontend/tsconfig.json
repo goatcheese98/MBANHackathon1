@@ -16,6 +16,6 @@
       "@/*": ["./app/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "app/vite-env.d.ts"],
   "exclude": ["node_modules", "dist", ".output"]
 }

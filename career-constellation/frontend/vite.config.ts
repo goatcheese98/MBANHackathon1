@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -23,4 +23,24 @@ export default defineConfig({
     },
     port: 3000,
   },
-});
+  // Build configuration for Cloudflare Pages
+  build: {
+    outDir: 'dist',
+    sourcemap: mode === 'development',
+    // Ensure assets are properly hashed for caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          three: ['three', '@react-three/fiber', '@react-three/drei'],
+          charts: ['recharts', 'd3'],
+          ui: ['framer-motion', 'lucide-react', '@radix-ui/react-tooltip'],
+        },
+      },
+    },
+  },
+  // Define environment variables for the client
+  define: {
+    __API_URL__: JSON.stringify(process.env.VITE_API_URL || ''),
+  },
+}));

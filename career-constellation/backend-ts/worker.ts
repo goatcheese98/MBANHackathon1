@@ -3,13 +3,27 @@ import { cors } from 'hono/cors';
 import { ragEngine, getRAG } from './rag.js';
 
 // Import data - Wrangler/Vite will bundle these
-import constellationData from '../frontend/public/constellation_data.json';
-import statsData from '../frontend/public/stats_data.json';
+import constellationData from '../data/constellation_data.json';
+import statsData from '../data/stats_data.json';
 import { bundledReports } from './reports-bundled.js';
 
 const app = new Hono();
 
-app.use('*', cors());
+// CORS configuration - allows local dev and production domains
+app.use('*', cors({
+    origin: [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        // Deployed Pages domains
+        'https://career-constellation.pages.dev',
+        'https://cf6626d2.career-constellation.pages.dev',
+        // 'https://your-custom-domain.com',
+    ],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: false,
+    maxAge: 86400,
+}));
 
 // Health check and metadata
 app.get('/', (c) => {

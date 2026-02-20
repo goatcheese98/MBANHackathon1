@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "tsx --env-file=.env server.ts",
     "build": "tsc",
-    "start": "node --env-file=.env dist/server.js"
+    "start": "node --env-file=.env dist/server.js",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "logs": "wrangler tail",
+    "secret:gemini": "wrangler secret put GEMINI_API_KEY"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
