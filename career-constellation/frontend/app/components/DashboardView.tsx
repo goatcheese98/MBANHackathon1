@@ -56,6 +56,8 @@ import {
   EyeOff,
   RotateCcw,
   Settings2,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { JobPoint, ClusterInfo } from '@/types';
 
@@ -306,23 +308,34 @@ function useChartTooltip() {
 
 function FamilyChartWidget({ clusterData, onExpand }: { clusterData: any[]; onExpand: () => void }) {
   const { containerRef, showTooltip, hideTooltip, TooltipEl } = useChartTooltip();
+  const top10 = clusterData.slice(0, 10);
   return (
-    <ChartCard title="Jobs by Family" subtitle="Distribution across clusters" onExpand={onExpand} tall>
+    <ChartCard title="Jobs by Family" subtitle={`Top 10 of ${clusterData.length} families`} onExpand={onExpand} tall>
       <div ref={containerRef} className="relative w-full h-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={clusterData} layout="vertical" margin={{ left: 80, right: 10, top: 5, bottom: 5 }}>
+          <BarChart data={top10} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" horizontal={false} />
             <XAxis type="number" stroke="#6b7280" tick={{ fill: 'currentColor', fontSize: 10 }} tickLine={false} axisLine={{ stroke: '#6b7280' }} />
-            <YAxis dataKey="name" type="category" stroke="#6b7280" width={70} tick={{ fill: 'currentColor', fontSize: 10 }} tickLine={false} axisLine={{ stroke: '#6b7280' }} />
+            <YAxis
+              dataKey="name"
+              type="category"
+              stroke="#6b7280"
+              width={160}
+              tick={{ fill: 'currentColor', fontSize: 9.5 }}
+              tickLine={false}
+              axisLine={{ stroke: '#6b7280' }}
+              tickFormatter={(v: string) => v.length > 28 ? v.slice(0, 27) + '…' : v}
+            />
             <RechartsTooltip content={() => null} />
             <Bar
               dataKey="count"
               radius={[0, 4, 4, 0]}
-              barSize={16}
-              onMouseEnter={(data: any) => showTooltip(data.name, `${data.count} jobs`)}
+              barSize={18}
+              label={{ position: 'right', fontSize: 10, fill: 'currentColor' }}
+              onMouseEnter={(data: any) => showTooltip(data.name, `${data.count} positions`)}
               onMouseLeave={hideTooltip}
             >
-              {clusterData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+              {top10.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -336,20 +349,29 @@ function KeywordsChartWidget({ keywordData, onExpand }: { keywordData: any[]; on
   const { containerRef, showTooltip, hideTooltip, TooltipEl } = useChartTooltip();
   const COMPANY_BLUE = '#1B75BC';
   return (
-    <ChartCard title="Top Keywords" subtitle="Most frequent across positions" onExpand={onExpand} tall>
+    <ChartCard title="Top Keywords" subtitle="Most frequent terms in position descriptions" onExpand={onExpand} tall>
       <div ref={containerRef} className="relative w-full h-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={keywordData} margin={{ bottom: 35, left: 30, right: 10, top: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" vertical={false} />
-            <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: 'currentColor', fontSize: 12 }} angle={-35} textAnchor="end" height={40} interval={0} tickLine={false} axisLine={{ stroke: '#6b7280' }} />
-            <YAxis stroke="#6b7280" tick={{ fill: 'currentColor', fontSize: 13, fontWeight: 600 }} tickLine={false} axisLine={{ stroke: '#6b7280' }} />
+          <BarChart data={keywordData} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--b3))" horizontal={false} />
+            <XAxis type="number" stroke="#6b7280" tick={{ fill: 'currentColor', fontSize: 10 }} tickLine={false} axisLine={{ stroke: '#6b7280' }} />
+            <YAxis
+              dataKey="name"
+              type="category"
+              stroke="#6b7280"
+              width={110}
+              tick={{ fill: 'currentColor', fontSize: 10, fontWeight: 500 }}
+              tickLine={false}
+              axisLine={{ stroke: '#6b7280' }}
+            />
             <RechartsTooltip content={() => null} />
             <Bar
               dataKey="count"
               fill={COMPANY_BLUE}
-              radius={[6, 6, 0, 0]}
-              barSize={32}
-              onMouseEnter={(data: any) => showTooltip(data.name, `Count: ${data.count}`)}
+              radius={[0, 4, 4, 0]}
+              barSize={18}
+              label={{ position: 'right', fontSize: 10, fill: 'currentColor' }}
+              onMouseEnter={(data: any) => showTooltip(data.name, `Appears in ${data.count} positions`)}
               onMouseLeave={hideTooltip}
             />
           </BarChart>
@@ -362,39 +384,57 @@ function KeywordsChartWidget({ keywordData, onExpand }: { keywordData: any[]; on
 
 function DistributionChartWidget({ pieData }: { pieData: any[] }) {
   const { containerRef, showTooltip, hideTooltip, TooltipEl } = useChartTooltip();
+  // Sort by count descending so the largest families always appear
+  const sorted = useMemo(() => [...pieData].sort((a, b) => b.value - a.value), [pieData]);
+  const top8 = sorted.slice(0, 8);
+  const total = top8.reduce((s: number, d: any) => s + d.value, 0);
+
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm" style={{ height: '440px' }}>
       <div className="px-5 py-3.5 border-b border-base-300">
         <h3 className="font-semibold text-sm">Distribution</h3>
-        <p className="text-xs text-base-content/50 mt-0.5">By job family</p>
+        <p className="text-xs text-base-content/50 mt-0.5">Top families by size</p>
       </div>
-      <div ref={containerRef} className="p-4 relative" style={{ height: '376px' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={pieData.slice(0, 6)}
-              cx="50%"
-              cy="50%"
-              innerRadius={70}
-              outerRadius={110}
-              paddingAngle={2}
-              dataKey="value"
-              label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-              isAnimationActive={false}
-            >
-              {pieData.slice(0, 6).map((e: any, i: number) => (
-                <Cell 
-                  key={i} 
-                  fill={e.color} 
-                  onMouseEnter={() => showTooltip(e.name, `${e.value} positions`)}
-                  onMouseLeave={hideTooltip}
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        {TooltipEl}
+      <div className="flex flex-col" style={{ height: '376px' }}>
+        {/* Pie */}
+        <div ref={containerRef} className="relative flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={top8}
+                cx="50%"
+                cy="50%"
+                innerRadius={52}
+                outerRadius={88}
+                paddingAngle={2}
+                dataKey="value"
+                label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
+                labelLine={false}
+                isAnimationActive={false}
+              >
+                {top8.map((e: any, i: number) => (
+                  <Cell
+                    key={i}
+                    fill={e.color}
+                    onMouseEnter={() => showTooltip(e.name, `${e.value} of ${total} positions`)}
+                    onMouseLeave={hideTooltip}
+                  />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          {TooltipEl}
+        </div>
+        {/* Legend */}
+        <div className="px-4 pb-3 grid grid-cols-2 gap-x-3 gap-y-1" style={{ maxHeight: '148px', overflowY: 'auto' }}>
+          {top8.map((e: any, i: number) => (
+            <div key={i} className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: e.color }} />
+              <span className="text-[10px] text-base-content/70 truncate" title={e.name}>{e.name}</span>
+              <span className="text-[10px] font-semibold text-base-content/50 flex-shrink-0 ml-auto">{e.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -446,13 +486,121 @@ function LandscapeWidget({ scatterData, jobs, onJobSelect, onExpand }: any) {
   );
 }
 
+// ─── Search Field Selector ────────────────────────────────────────────────────
+
+interface SearchFieldConfig {
+  key: string;
+  label: string;
+  checked: boolean;
+}
+
+const DEFAULT_SEARCH_FIELDS: SearchFieldConfig[] = [
+  { key: 'title', label: 'Title', checked: true },
+  { key: 'summary', label: 'Summary', checked: true },
+  { key: 'employee_id', label: 'Employee ID', checked: false },
+  { key: 'responsibilities', label: 'Responsibilities', checked: false },
+  { key: 'qualifications', label: 'Qualifications', checked: false },
+  { key: 'keywords', label: 'Keywords', checked: true },
+  { key: 'skills', label: 'Skills', checked: true },
+  { key: 'cluster_label', label: 'Job Family', checked: true },
+];
+
+function SearchFieldSelector({ 
+  fields, 
+  onChange,
+  onSelectAll,
+  onClearAll 
+}: { 
+  fields: SearchFieldConfig[]; 
+  onChange: (key: string, checked: boolean) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const checkedCount = fields.filter(f => f.checked).length;
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="btn btn-sm btn-ghost gap-1 text-xs"
+        title="Select search fields"
+      >
+        <span className="text-base-content/60">Fields</span>
+        <span className="badge badge-sm badge-primary">{checkedCount}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-56 bg-base-100 border border-base-300 rounded-lg shadow-xl z-50 py-2">
+          <div className="px-3 py-2 border-b border-base-200 flex items-center justify-between">
+            <span className="text-xs font-semibold text-base-content/50">Search in:</span>
+            <div className="flex gap-1">
+              <button onClick={onSelectAll} className="text-[10px] text-primary hover:underline">All</button>
+              <span className="text-base-content/30">|</span>
+              <button onClick={onClearAll} className="text-[10px] text-primary hover:underline">None</button>
+            </div>
+          </div>
+          <div className="py-1">
+            {fields.map((field) => (
+              <label
+                key={field.key}
+                className="flex items-center gap-3 px-3 py-1.5 hover:bg-base-200 cursor-pointer transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={field.checked}
+                  onChange={(e) => onChange(field.key, e.target.checked)}
+                  className="checkbox checkbox-sm checkbox-primary"
+                />
+                <span className="text-sm flex-1">{field.label}</span>
+                {field.checked && <Check className="w-3 h-3 text-primary" />}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Table Widget ─────────────────────────────────────────────────────────────
 
-function TableWidget({ paginatedJobs, filteredJobs, totalJobs, totalPages, currentPage, setCurrentPage, onJobSelect, selectedClusters, clusters, activeFiltersCount, onClearFilters }: any) {
+function TableWidget({ paginatedJobs, filteredJobs, totalJobs, totalPages, currentPage, setCurrentPage, onJobSelect, selectedClusters, clusters, activeFiltersCount, onClearFilters, searchQuery, onSearchChange, searchFields, onSearchFieldsChange }: any) {
   const tableTitle =
     selectedClusters.length === 0 ? 'All Positions' :
     selectedClusters.length === 1 ? (clusters.find((c: ClusterInfo) => c.id === selectedClusters[0])?.label || 'Selected Family') :
     `${selectedClusters.length} Job Families`;
+
+  const handleSelectAllFields = () => {
+    onSearchFieldsChange(searchFields.map((f: SearchFieldConfig) => ({ ...f, checked: true })));
+  };
+
+  const handleClearAllFields = () => {
+    onSearchFieldsChange(searchFields.map((f: SearchFieldConfig) => ({ ...f, checked: false })));
+  };
+
+  const handleFieldChange = (key: string, checked: boolean) => {
+    onSearchFieldsChange(searchFields.map((f: SearchFieldConfig) => 
+      f.key === key ? { ...f, checked } : f
+    ));
+  };
+
+  const checkedFieldsCount = searchFields.filter((f: SearchFieldConfig) => f.checked).length;
+  const searchPlaceholder = checkedFieldsCount === 0 
+    ? 'Select fields to search...' 
+    : `Search in ${checkedFieldsCount} field${checkedFieldsCount !== 1 ? 's' : ''}...`;
 
   return (
     <div className="card bg-base-100 border border-base-300 shadow-lg overflow-hidden">
@@ -467,15 +615,43 @@ function TableWidget({ paginatedJobs, filteredJobs, totalJobs, totalPages, curre
             </>
           )}
         </div>
+        {/* Search Bar with Field Selector */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+            <input 
+              type="text" 
+              placeholder={searchPlaceholder}
+              value={searchQuery} 
+              onChange={(e) => onSearchChange(e.target.value)} 
+              disabled={checkedFieldsCount === 0}
+              className="input input-bordered w-full pl-10 pr-10 text-sm disabled:bg-base-200 disabled:text-base-content/40" 
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => onSearchChange('')} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <SearchFieldSelector
+            fields={searchFields}
+            onChange={handleFieldChange}
+            onSelectAll={handleSelectAllFields}
+            onClearAll={handleClearAllFields}
+          />
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="table table-zebra w-full">
           <thead className="bg-base-200/70 text-sm">
             <tr>
-              <th className="w-[40%] py-3">Position</th>
-              <th className="w-[13%]">Family</th>
-              <th className="w-[22%]">Keywords</th>
-              <th className="w-[13%]">Skills</th>
+              <th className="py-3" style={{ width: '35%' }}>Position</th>
+              <th style={{ minWidth: '180px' }}>Family</th>
+              <th style={{ width: '20%' }}>Keywords</th>
+              <th style={{ width: '12%' }}>Skills</th>
               <th className="w-[12%]"></th>
             </tr>
           </thead>
@@ -487,11 +663,14 @@ function TableWidget({ paginatedJobs, filteredJobs, totalJobs, totalPages, curre
                   <td className="py-3">
                     <p className="font-semibold text-sm group-hover:text-primary transition-colors">{job.title}</p>
                     <p className="text-xs text-base-content/50 line-clamp-1">{job.summary}</p>
+                    {job.employee_id && (
+                      <p className="text-[10px] text-base-content/35 mt-0.5 font-mono">{job.employee_id}</p>
+                    )}
                   </td>
                   <td>
-                    <span className="badge badge-sm gap-1 whitespace-nowrap px-2 py-1 max-w-[110px] truncate" style={{ backgroundColor: `${job.color}20`, color: job.color }}>
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: job.color }} />
-                      {clusterLabel}
+                    <span className="inline-flex items-start gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium leading-snug" style={{ backgroundColor: `${job.color}20`, color: job.color }}>
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: job.color }} />
+                      <span>{clusterLabel}</span>
                     </span>
                   </td>
                   <td>
@@ -534,7 +713,7 @@ function TableWidget({ paginatedJobs, filteredJobs, totalJobs, totalPages, curre
 
 // ─── Filter Panel ─────────────────────────────────────────────────────────────
 
-function FilterPanel({ isOpen, onClose, clusters, selectedClusters, onClustersSelect, searchQuery, onSearchChange, keywordFilters, onKeywordFilterChange, allKeywords }: any) {
+function FilterPanel({ isOpen, onClose, clusters, selectedClusters, onClustersSelect, searchQuery, onSearchChange, keywordFilters, onKeywordFilterChange, allKeywords, onClearAll }: any) {
   const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (panelRef.current) gsap.to(panelRef.current, { x: isOpen ? 0 : '100%', duration: 0.3, ease: 'power3.out' }); }, [isOpen]);
 
@@ -644,7 +823,7 @@ function FilterPanel({ isOpen, onClose, clusters, selectedClusters, onClustersSe
       <div className="p-6 border-t border-base-300 bg-base-200/30 space-y-3">
         {activeCount > 0 && (
           <button
-            onClick={() => { onClustersSelect([]); onSearchChange(''); onKeywordFilterChange([]); }}
+            onClick={onClearAll}
             className="text-error text-sm hover:underline block w-full text-left"
           >
             Clear all filters ({activeCount})
@@ -1034,6 +1213,7 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
   const [keywordFilters, setKeywordFilters] = useState<string[]>([]);
   const [widgetConfigs, setWidgetConfigs] = useState<WidgetConfig[]>(DEFAULT_CONFIGS);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [searchFields, setSearchFields] = useState<SearchFieldConfig[]>(DEFAULT_SEARCH_FIELDS);
 
   const ITEMS_PER_PAGE = 12;
 
@@ -1083,12 +1263,43 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
   const filteredJobs = useMemo(() => {
     let result = jobs;
     if (selectedClusters.length > 0) result = result.filter(j => selectedClusters.includes(j.cluster_id));
-    if (searchQuery) { const q = searchQuery.toLowerCase(); result = result.filter(j => j.title.toLowerCase().includes(q) || j.summary.toLowerCase().includes(q)); }
+    if (searchQuery) { 
+      const q = searchQuery.toLowerCase();
+      const activeFields = searchFields.filter(f => f.checked).map(f => f.key);
+      
+      if (activeFields.length > 0) {
+        result = result.filter(j => {
+          return activeFields.some(field => {
+            switch (field) {
+              case 'title':
+                return j.title.toLowerCase().includes(q);
+              case 'summary':
+                return j.summary.toLowerCase().includes(q);
+              case 'employee_id':
+                return j.employee_id?.toLowerCase().includes(q) || false;
+              case 'responsibilities':
+                return j.responsibilities?.toLowerCase().includes(q) || false;
+              case 'qualifications':
+                return j.qualifications?.toLowerCase().includes(q) || false;
+              case 'keywords':
+                return j.keywords.some(kw => kw.toLowerCase().includes(q));
+              case 'skills':
+                return j.skills.some(s => s.toLowerCase().includes(q));
+              case 'cluster_label':
+                const clusterLabel = clusters.find((c: ClusterInfo) => c.id === j.cluster_id)?.label || '';
+                return clusterLabel.toLowerCase().includes(q);
+              default:
+                return false;
+            }
+          });
+        });
+      }
+    }
     if (keywordFilters.length > 0) result = result.filter(j => keywordFilters.some(kw => j.keywords.includes(kw)));
     return result;
-  }, [jobs, selectedClusters, searchQuery, keywordFilters]);
+  }, [jobs, selectedClusters, searchQuery, keywordFilters, searchFields, clusters]);
 
-  useEffect(() => setCurrentPage(1), [searchQuery, selectedClusters, keywordFilters]);
+  useEffect(() => setCurrentPage(1), [searchQuery, selectedClusters, keywordFilters, searchFields]);
 
   const totalPages   = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
   const paginatedJobs = useMemo(() => {
@@ -1114,10 +1325,11 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
   const keywordData  = useMemo(() => { const kws: Record<string, number> = {}; filteredJobs.forEach(j => j.keywords.forEach(kw => kws[kw] = (kws[kw] || 0) + 1)); return Object.entries(kws).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count })); }, [filteredJobs]);
   const scatterData  = useMemo(() => filteredJobs.map(j => ({ x: j.x, y: j.y, id: j.id, title: j.title, color: j.color, cluster: j.cluster_id })), [filteredJobs]);
   
-  const pieData = useMemo(() => 
+  const pieData = useMemo(() =>
     clusters
       .map(c => ({ name: c.label || `Family ${c.id}`, value: clusterCounts[c.id] || 0, color: c.color }))
-      .filter(c => c.value > 0),
+      .filter(c => c.value > 0)
+      .sort((a, b) => b.value - a.value),
     [clusters, clusterCounts]
   );
 
@@ -1129,7 +1341,7 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
     standardizable: clusters.filter(c => c.size > 20).length,
   };
 
-  const activeFiltersCount = selectedClusters.length + keywordFilters.length + (searchQuery ? 1 : 0);
+  const activeFiltersCount = selectedClusters.length + keywordFilters.length + (searchQuery && searchFields.some(f => f.checked) ? 1 : 0);
 
   // ── Sortable items ───────────────────────────────────────────────────────
   // Non-locked widgets: these go inside SortableContext
@@ -1166,6 +1378,7 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
         keywordFilters={keywordFilters}
         onKeywordFilterChange={setKeywordFilters}
         allKeywords={allKeywords}
+        onClearAll={() => { onClustersSelect([]); onSearchChange(''); setKeywordFilters([]); setSearchFields(DEFAULT_SEARCH_FIELDS); }}
       />
       <AnimatePresence>
         {showFilters && (
@@ -1245,7 +1458,11 @@ export default function DashboardView({ jobs, clusters, selectedClusters, search
                   selectedClusters={selectedClusters}
                   clusters={clusters}
                   activeFiltersCount={activeFiltersCount}
-                  onClearFilters={() => { onClustersSelect([]); onSearchChange(''); setKeywordFilters([]); }}
+                  onClearFilters={() => { onClustersSelect([]); onSearchChange(''); setKeywordFilters([]); setSearchFields(DEFAULT_SEARCH_FIELDS); }}
+                  searchQuery={searchQuery}
+                  onSearchChange={onSearchChange}
+                  searchFields={searchFields}
+                  onSearchFieldsChange={setSearchFields}
                 />
               </div>
             </div>

@@ -3,94 +3,73 @@
 An AI-powered 3D visualization platform for job description clustering and standardization. Built for the Methanex Hackathon Challenge #1.
 
 ![Constellation Visualization](https://img.shields.io/badge/3D-Three.js-black)
-![AI](https://img.shields.io/badge/AI-Sentence--BERT-blue)
-![Frontend](https://img.shields.io/badge/Frontend-Next.js%2014-purple)
-![Backend](https://img.shields.io/badge/Backend-FastAPI-green)
+![AI](https://img.shields.io/badge/AI-Gemini%20RAG-blue)
+![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-purple)
+![Backend](https://img.shields.io/badge/Backend-TypeScript%20%2B%20Express-green)
 
 ## ✨ Features
 
-### 🤖 AI-Powered Clustering
-- **Sentence-BERT Embeddings** - Converts job descriptions into semantic vectors
-- **HDBSCAN Clustering** - Discovers natural job families without predefined categories
-- **TF-IDF Keyword Extraction** - Identifies key characteristics of each role
-- **Similarity Analysis** - Finds similar jobs for standardization opportunities
+### 🤖 AI-Powered RAG Chat
+- **Gemini Integration** - AI assistant powered by Google Gemini
+- **Report Analysis** - Ask questions about 6 research reports
+- **Job Search** - Find relevant positions using natural language
+- **Context-Aware Responses** - Uses TF-IDF retrieval for relevant context
 
 ### 🎨 Stunning 3D Visualization
-- **Interactive Galaxy** - Jobs represented as stars in a cosmic constellation
+- **Interactive Galaxy** - 622 jobs as stars in a cosmic constellation
+- **25 Clusters** - Jobs grouped into color-coded families
 - **Constellation Lines** - Visual connections between related roles
-- **Cluster Color Coding** - Each job family has its own cosmic hue
-- **Smooth Animations** - Powered by React Three Fiber and Framer Motion
+- **Smooth Animations** - Powered by React Three Fiber
 
 ### 📊 Rich Data Exploration
-- **Job Details Panel** - Full job descriptions, skills, and requirements
-- **Cluster Analysis** - Insights into job families and standardization candidates
-- **Similar Jobs** - Find roles that could be merged
+- **Job Details Panel** - Full descriptions, responsibilities, qualifications
+- **Cluster Analysis** - Browse 25 job families
+- **Research Reports** - 6 markdown reports on methanol industry
 - **Search & Filter** - Quickly locate specific positions
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
 - Node.js 18+
 - npm or yarn
+- Gemini API key (for AI chat)
 
-### Option 1: Automated Startup (Recommended)
+### Start the Application
 
 ```bash
 cd career-constellation
-chmod +x start.sh
 ./start.sh
 ```
 
 This will:
-1. Set up Python virtual environment
-2. Install all dependencies
-3. Start the backend (http://localhost:8000)
-4. Start the frontend (http://localhost:3000)
+1. Start the TypeScript backend (http://localhost:8000)
+2. Start the React frontend (http://localhost:3000)
+3. Initialize RAG with 1,233 chunks (610 reports + 622 jobs)
 
-### Option 2: Manual Setup
+### Set up Gemini API Key (Optional - for AI chat)
 
-#### Backend
 ```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
+cd backend-ts
+echo "GEMINI_API_KEY=your_api_key_here" > .env
 ```
 
-#### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Get your API key at: https://makersuite.google.com/app/apikey
 
 ## 📁 Project Structure
 
 ```
 career-constellation/
-├── backend/
-│   ├── main.py                 # FastAPI application
-│   ├── requirements.txt        # Python dependencies
-│   └── data/                   # Data files
-├── frontend/
-│   ├── app/                    # Next.js app router
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   └── globals.css
-│   ├── components/
-│   │   ├── GalaxyScene.tsx     # 3D visualization
-│   │   ├── JobDetailsPanel.tsx
-│   │   ├── ClusterPanel.tsx
-│   │   └── Header.tsx
-│   ├── lib/
-│   │   ├── api.ts              # API client
-│   │   └── utils.ts
-│   ├── types/
-│   │   └── index.ts            # TypeScript types
+├── backend-ts/                 # TypeScript/Express backend
+│   ├── server.ts              # Express server
+│   ├── rag.ts                 # RAG system with Gemini
 │   ├── package.json
-│   └── next.config.js
+│   └── dist/                  # Compiled JavaScript
+├── frontend/                   # React/TypeScript frontend
+│   ├── app/                   # Vite app
+│   ├── components/            # React components
+│   ├── lib/api.ts             # API client
+│   └── public/                # Static assets
+├── reports/                    # 6 research reports
 ├── start.sh                    # Startup script
 └── README.md
 ```
@@ -98,44 +77,19 @@ career-constellation/
 ## 🔧 Technology Stack
 
 ### Backend
-- **FastAPI** - Modern, fast web framework
-- **Sentence Transformers** - For semantic text embeddings
-- **HDBSCAN** - Density-based clustering
-- **UMAP** - Dimensionality reduction for visualization
-- **scikit-learn** - ML utilities
+- **Express.js** - Fast web framework
+- **TypeScript** - Type safety
+- **Google Generative AI** - Gemini for chat
+- **Natural.js** - TF-IDF for retrieval
+- **PapaParse** - CSV parsing
 
 ### Frontend
-- **Next.js 14** - React framework with App Router
+- **React 18** - UI framework
 - **TypeScript** - Type safety
+- **Vite** - Build tool
 - **Three.js + React Three Fiber** - 3D graphics
-- **Drei** - Three.js helpers
-- **Framer Motion** - Animations
 - **Tailwind CSS** - Styling
-- **Zustand** - State management (ready for use)
-
-## 🎯 Key Algorithms
-
-### 1. Text Embedding
-```python
-model = SentenceTransformer('all-MiniLM-L6-v2')
-embeddings = model.encode(job_descriptions)
-```
-
-### 2. Clustering
-```python
-clusterer = hdbscan.HDBSCAN(
-    min_cluster_size=5,
-    min_samples=3,
-    metric='euclidean'
-)
-clusters = clusterer.fit_predict(embeddings)
-```
-
-### 3. 3D Projection
-```python
-reducer = umap.UMAP(n_components=3, metric='cosine')
-coords_3d = reducer.fit_transform(embeddings)
-```
+- **Axios** - HTTP client
 
 ## 📊 API Endpoints
 
@@ -143,42 +97,45 @@ coords_3d = reducer.fit_transform(embeddings)
 |----------|-------------|
 | `GET /api/constellation` | Get all jobs with clustering data |
 | `GET /api/job/{id}` | Get detailed job information |
-| `POST /api/similar-jobs` | Find similar jobs |
 | `GET /api/clusters/{id}/details` | Get cluster analysis |
 | `GET /api/stats` | Get overall statistics |
+| `GET /api/reports` | List all research reports |
+| `GET /api/reports/{id}` | Get report content |
+| `POST /api/chat` | AI chat with RAG |
+| `GET /api/chat/status` | RAG system status |
 
 ## 🎮 How to Use
 
 1. **Explore the Galaxy**
    - Drag to rotate the view
    - Scroll to zoom in/out
-   - Watch stars pulse - each is a job!
+   - Click stars to see job details
 
-2. **Inspect a Job**
-   - Click any star to see job details
-   - View responsibilities, qualifications, and skills
-   - Find similar roles in the "Similar Jobs" tab
+2. **Browse Reports**
+   - Go to Reports section
+   - Select a research report
+   - Ask AI questions about the report
 
-3. **Analyze Clusters**
-   - Select a job family from the left panel
-   - See cluster statistics and top skills
-   - Identify standardization candidates
+3. **AI Chat**
+   - Ask questions like "What are the main findings?"
+   - Search across all 6 reports
+   - Get context-aware answers
 
-4. **Search & Filter**
-   - Use the search bar to find specific roles
-   - Filter by keywords, titles, or descriptions
+4. **Analyze Clusters**
+   - Select job families from the left panel
+   - View cluster statistics
 
 ## 🏆 Hackathon Challenge #1
 
 This project addresses the Methanex Job Description Clustering challenge:
 
-> **Problem**: Methanex has ~2,000 job descriptions with a 1:1 ratio to employees, making it difficult to standardize positions and career paths.
+> **Problem**: Methanex has job descriptions with a 1:1 ratio to employees, making it difficult to standardize positions and career paths.
 
 > **Solution**: An AI-driven approach that:
-> 1. Clusters similar job descriptions into job families
+> 1. Clusters 622 job descriptions into 25 job families
 > 2. Visualizes relationships in an interactive 3D space
-> 3. Identifies standardization opportunities
-> 4. Provides actionable insights for HR processes
+> 3. Provides AI-powered report analysis
+> 4. Offers actionable insights for HR processes
 
 ## 📝 License
 

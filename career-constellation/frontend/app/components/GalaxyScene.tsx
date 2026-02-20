@@ -180,7 +180,7 @@ function ClusterConnections({
 // Cluster Label
 function ClusterLabel({ cluster }: { cluster: ClusterInfo }) {
   return (
-    <group position={[cluster.centroid.x, cluster.centroid.y + 6, cluster.centroid.z]}>
+    <group position={[cluster.centroid.x, cluster.centroid.y + 6, cluster.centroid.z ?? 0]}>
       <Html distanceFactor={12}>
         <div 
           className="badge badge-lg gap-1 border"

@@ -26,8 +26,8 @@ import {
   RefreshCw, ShoppingCart, ShoppingBag, Mountain, FlaskConical, Utensils, Pill, Languages, BoxSelect, Brain, Grid3X3, Palette, Hand
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { JobPoint, SimilarJob } from '@/types';
-import { fetchSimilarJobs } from '@/lib/api';
+import { JobPoint, SimilarJob, JobDetails } from '@/types';
+import { fetchSimilarJobs, fetchJobDetails } from '@/lib/api';
 import { truncateText, getSimilarityColor } from '@/lib/utils';
 
 interface JobDetailsPanelProps {
@@ -338,6 +338,7 @@ function getSkillIcon(skill: string): LucideIcon {
 
 export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetailsPanelProps) {
   const [similarJobs, setSimilarJobs] = useState<SimilarJob[]>([]);
+  const [fullDetails, setFullDetails] = useState<JobDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'similar'>('overview');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -345,10 +346,16 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
   useEffect(() => {
     if (job) {
       setLoading(true);
-      fetchSimilarJobs(job.id, 5)
-        .then(data => setSimilarJobs(data.similar_jobs))
-        .finally(() => setLoading(false));
-      
+      setFullDetails(null);
+      // Fetch full untruncated details + similar jobs in parallel
+      Promise.all([
+        fetchJobDetails(job.id).catch(() => null),
+        fetchSimilarJobs(job.id, 5).catch(() => ({ similar_jobs: [] })),
+      ]).then(([details, similarData]) => {
+        if (details) setFullDetails(details);
+        setSimilarJobs(similarData.similar_jobs);
+      }).finally(() => setLoading(false));
+
       // Animate content on job change
       if (contentRef.current) {
         gsap.fromTo(contentRef.current.children,
@@ -360,6 +367,13 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
   }, [job]);
 
   if (!job) return null;
+
+  // Use full details (untruncated) when available, fall back to job while loading
+  const displaySummary         = fullDetails?.summary         || job.summary;
+  const displayResponsibilities = fullDetails?.responsibilities || job.responsibilities;
+  const displayQualifications  = fullDetails?.qualifications  || job.qualifications;
+  const displaySkills          = (fullDetails?.skills         || job.skills) ?? [];
+  const displayKeywords        = (fullDetails?.keywords       || job.keywords) ?? [];
 
   // Extract location from title if present
   const locationMatch = job.title.match(/\(([^)]+)\)/);
@@ -386,7 +400,7 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                 style={{ backgroundColor: job.color }}
               />
               <span className="text-sm font-semibold text-base-content/70 uppercase tracking-wider">
-                Family {job.cluster_id}
+                {job.cluster_label || `Family ${job.cluster_id}`}
               </span>
             </div>
             <button
@@ -457,7 +471,7 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                   <h3 className="font-semibold text-base-content">Summary</h3>
                 </div>
                 <p className="text-sm text-base-content/80 leading-relaxed">
-                  {job.summary || 'No summary available.'}
+                  {displaySummary || 'No summary available.'}
                 </p>
               </div>
 
@@ -468,7 +482,7 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                   <h3 className="font-semibold text-base-content">Keywords</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {job.keywords.map((kw, i) => {
+                  {displayKeywords.map((kw, i) => {
                     const color = getKeywordColor(kw);
                     return (
                       <span 
@@ -488,11 +502,11 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                 <div className="flex items-center gap-2 mb-3">
                   <Target className="w-4 h-4 text-base-content/50" />
                   <h3 className="font-semibold text-base-content">Competencies</h3>
-                  <span className="text-xs text-base-content/40">({job.skills.length} skills)</span>
+                  <span className="text-xs text-base-content/40">({displaySkills.length} skills)</span>
                 </div>
-                {job.skills.length > 0 ? (
+                {displaySkills.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {job.skills.map((skill, i) => {
+                    {displaySkills.map((skill, i) => {
                       const SkillIcon = getSkillIcon(skill);
                       return (
                         <div 
@@ -517,7 +531,7 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
               </div>
 
               {/* Responsibilities Section */}
-              {job.responsibilities && (
+              {displayResponsibilities && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Building2 className="w-4 h-4 text-base-content/50" />
@@ -525,14 +539,14 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                   </div>
                   <div className="bg-base-200/30 rounded-2xl p-5 border border-base-300">
                     <p className="text-sm text-base-content/80 leading-relaxed whitespace-pre-line">
-                      {job.responsibilities}
+                      {displayResponsibilities}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Qualifications Section */}
-              {job.qualifications && (
+              {displayQualifications && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <GraduationCap className="w-4 h-4 text-base-content/50" />
@@ -540,7 +554,7 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
                   </div>
                   <div className="bg-base-200/30 rounded-2xl p-5 border border-base-300">
                     <p className="text-sm text-base-content/80 leading-relaxed whitespace-pre-line">
-                      {job.qualifications}
+                      {displayQualifications}
                     </p>
                   </div>
                 </div>
@@ -626,9 +640,16 @@ export default function JobDetailsPanel({ job, onClose, onJobSelect }: JobDetail
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-base-300 bg-base-200/50 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-base-content/50">
-            <Hash className="w-3 h-3" />
-            <span>Position ID: <span className="font-mono font-medium">{job.id}</span></span>
+          <div className="flex items-center gap-3 text-xs text-base-content/50">
+            <div className="flex items-center gap-1">
+              <Hash className="w-3 h-3" />
+              <span>ID: <span className="font-mono font-medium">{job.id}</span></span>
+            </div>
+            {job.employee_id && (
+              <div className="flex items-center gap-1">
+                <span className="font-mono font-medium text-primary/70">{job.employee_id}</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-base-content/40">{job.keywords.length} keywords</span>

@@ -27,13 +27,15 @@ export default function ReportViewer({
   onToggleFullscreen 
 }: ReportViewerProps) {
   const [content, setContent] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(report.type === 'local');
   const [error, setError] = useState<string | null>(null);
 
   // Load local markdown content from backend API
   useEffect(() => {
     if (report.type === 'local') {
       setLoading(true);
+      setContent('');
+      setError(null);
       // URL-encode the report source to handle spaces and special characters
       const encodedSource = encodeURIComponent(report.source);
       api.get(`/api/reports/${encodedSource}`)

@@ -10,6 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './app'),
     },
   },
+  // Allow importing JSON files as modules
+  json: {
+    stringify: false,
+  },
   server: {
     proxy: {
       '/api': {

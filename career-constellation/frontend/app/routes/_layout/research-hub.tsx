@@ -72,11 +72,14 @@ Search across all 6 research reports for broader insights and cross-report compa
   const [sources, setSources] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch chat status
+  // Fetch chat status — poll every 3s until initialized, then stop
   const { data: status } = useQuery({
     queryKey: ['chat-status'],
     queryFn: fetchChatStatus,
-    refetchInterval: 30000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.initialized ? false : 3000;
+    },
   });
 
   // Auto-scroll chat to bottom
@@ -211,7 +214,7 @@ Search across all 6 research reports for broader insights and cross-report compa
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-base-content">Reports</span>
+              <span className="font-semibold text-base-content">Internal Market Reports</span>
             </div>
           )}
           <button
@@ -268,6 +271,11 @@ Search across all 6 research reports for broader insights and cross-report compa
                   </>
                 )}
               </div>
+            </div>
+            {/* Powered by Gemini */}
+            <div className="mt-3 pt-3 border-t border-base-200 flex items-center gap-2">
+              <img src="/gemini.png" alt="Gemini" className="h-5 w-5 rounded-full object-cover" />
+              <span className="text-[11px] text-base-content/50">Powered by Gemini Deep Research</span>
             </div>
           </div>
         )}

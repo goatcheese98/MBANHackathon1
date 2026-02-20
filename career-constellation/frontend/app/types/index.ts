@@ -1,20 +1,24 @@
 export interface JobPoint {
   id: number;
+  employee_id?: string;
   title: string;
   summary: string;
   responsibilities: string;
   qualifications: string;
   cluster_id: number;
+  cluster_label?: string;
   x: number;
   y: number;
-  z?: number;  // deprecated
+  z: number;
   size: number;
   color: string;
   keywords: string[];
   skills: string[];
   job_level?: string | null;
   scope?: string | null;
-  affinities: Record<number, number>;  // cluster_id → 384D cosine similarity
+  distance_to_center?: number;
+  affinities?: Record<number, number>;  // optional — only available with SBERT embeddings
+  similar_jobs?: { employee_id: string; similarity: number }[];
 }
 
 export interface ClusterInfo {
@@ -27,6 +31,7 @@ export interface ClusterInfo {
   centroid: {
     x: number;
     y: number;
+    z?: number;
   };
   jobs: number[];
 }
